@@ -136,10 +136,10 @@ Private Function ResolveDataXlsmPath() As String
         Exit Function
     End If
 
-    Dim local As String
-    local = GetAppRootPath() & "\data\" & FALLBACK_DATA_FILENAME
-    If Dir(local) <> "" Then
-        ResolveDataXlsmPath = local
+    Dim localPath As String
+    localPath = GetAppRootPath() & "\data\" & FALLBACK_DATA_FILENAME
+    If Dir(localPath) <> "" Then
+        ResolveDataXlsmPath = localPath
         Exit Function
     End If
 
