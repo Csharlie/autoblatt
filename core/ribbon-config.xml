@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Autoblatt custom ribbon definicio.
+
+  FIGYELEM: A ceges policy jelenleg nem engedi a custom ribbon
+  betoltodeset. Az elsodleges UI a munkalapra agyazott gombok
+  (lasd ui/ mappa). Ez az XML megmarad arra az esetre, ha a
+  policy felold.
+-->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+  <ribbon>
+    <tabs>
+      <tab id="AutoblattTab" label="Autoblatt">
+        <group id="ModulesGroup" label="Modulok">
+          <button id="DriveManagerBtn" label="Drive Mentes"
+                  size="large" onAction="OnRunDriveManager"
+                  imageMso="FileSave" />
+          <button id="ImageImporterBtn" label="Kep Import"
+                  size="large" onAction="OnRunImageImporter"
+                  imageMso="PictureInsert" />
+          <button id="EmailSenderBtn" label="Email Kuldes"
+                  size="large" onAction="OnRunEmailSender"
+                  imageMso="SendAsMail" />
+        </group>
+        <group id="PanelsGroup" label="Panelek">
+          <button id="FillPanelBtn" label="Fill Panel"
+                  size="large" onAction="OnRunFillPanel"
+                  imageMso="TableInsert" />
+          <button id="HelprePanelBtn" label="Helpre Panel"
+                  size="large" onAction="OnRunHelprePanel"
+                  imageMso="HelpFilesList" />
+        </group>
+        <group id="SettingsGroup" label="Beallitasok">
+          <button id="SettingsBtn" label="Beallitasok"
+                  size="large" onAction="OnOpenSettings"
+                  imageMso="ControlPanelHome" />
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>

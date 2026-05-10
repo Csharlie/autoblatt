@@ -1,0 +1,33 @@
+# Generated configuration files
+settings/system-config.json
+
+# Installation logs
+install.log
+*.log
+
+# VSCode workspace
+autoblatt-local.code-workspace
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Windows specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VS Code settings (optional)
+.vscode/
+
+# Backup files
+*.bak
+*.orig
+
+# Sensitive data — production data.xlsm with real personnel info
+# (commit data/data-template.xlsm or use a separate branch instead)
+data/data.xlsm
+
+# Built distributable (optional — uncomment to keep dist out of git)
+# dist/autoblatt.xlsb
