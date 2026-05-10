@@ -122,16 +122,10 @@ Function WriteLocalConfig()
     WriteLocalConfig = True
     Call WriteLog("Lokalis konfig irasa...")
 
-    Dim configFile, configContent
-    configFile = installPath & "\settings\system-config.json"
-
-    If Not fso.FolderExists(installPath & "\settings") Then
-        fso.CreateFolder(installPath & "\settings")
-    End If
-
     Dim documentsPath
     documentsPath = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%USERPROFILE%") & "\Documents\autoblatt\"
 
+    Dim configContent
     configContent = "{" & vbCrLf & _
                     "  ""appName"": ""Autoblatt""," & vbCrLf & _
                     "  ""appVersion"": ""1.0.0""," & vbCrLf & _
@@ -147,15 +141,41 @@ Function WriteLocalConfig()
                     "  ""emailSignatureMode"": ""outlook""" & vbCrLf & _
                     "}"
 
+    ' 1) Felhasznalo-szintu config (%LOCALAPPDATA%\Autoblatt\system-config.json)
+    '    Ez a futasidoben hasznalt, az xlsb innen olvas.
+    Dim userConfigDir, userConfigFile
+    userConfigDir = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Autoblatt"
+    userConfigFile = userConfigDir & "\system-config.json"
+    If Not fso.FolderExists(userConfigDir) Then fso.CreateFolder(userConfigDir)
+
+    On Error Resume Next
+    Dim ufile
+    Set ufile = fso.CreateTextFile(userConfigFile, True)
+    ufile.WriteLine configContent
+    ufile.Close
+    If Err.Number <> 0 Then
+        Call WriteLog("HIBA: Felhasznalo-szintu konfig iras sikertelen: " & Err.Description)
+        WriteLocalConfig = False
+    Else
+        Call WriteLog("Konfig leirva: " & userConfigFile)
+    End If
+    On Error GoTo 0
+
+    ' 2) Projekt-szintu masolat (settings\system-config.json) - dokumentacio /
+    '    fejlesztoi konfig celjaira
+    If Not fso.FolderExists(installPath & "\settings") Then
+        fso.CreateFolder(installPath & "\settings")
+    End If
+    Dim configFile
+    configFile = installPath & "\settings\system-config.json"
+
     On Error Resume Next
     Dim file
     Set file = fso.CreateTextFile(configFile, True)
     file.WriteLine configContent
     file.Close
-
     If Err.Number <> 0 Then
-        Call WriteLog("HIBA: Konfig iras sikertelen: " & Err.Description)
-        WriteLocalConfig = False
+        Call WriteLog("FIGY: Projekt-szintu konfig nem irhato (nem hibas, csak figyelmeztetes): " & Err.Description)
     Else
         Call WriteLog("Konfig leirva: " & configFile)
     End If

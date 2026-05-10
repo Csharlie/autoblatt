@@ -103,16 +103,11 @@ End Function
 
 Function WriteNetworkConfig()
     WriteNetworkConfig = True
-    Dim configFile, configContent
-    configFile = installPath & "\settings\system-config.json"
-
-    If Not fso.FolderExists(installPath & "\settings") Then
-        fso.CreateFolder(installPath & "\settings")
-    End If
 
     Dim documentsPath
     documentsPath = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%USERPROFILE%") & "\Documents\autoblatt\"
 
+    Dim configContent
     configContent = "{" & vbCrLf & _
                     "  ""appName"": ""Autoblatt""," & vbCrLf & _
                     "  ""appVersion"": ""1.0.0""," & vbCrLf & _
@@ -128,14 +123,39 @@ Function WriteNetworkConfig()
                     "  ""emailSignatureMode"": ""outlook""" & vbCrLf & _
                     "}"
 
+    ' 1) Felhasznalo-szintu config (%LOCALAPPDATA%\Autoblatt\system-config.json)
+    Dim userConfigDir, userConfigFile
+    userConfigDir = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Autoblatt"
+    userConfigFile = userConfigDir & "\system-config.json"
+    If Not fso.FolderExists(userConfigDir) Then fso.CreateFolder(userConfigDir)
+
+    On Error Resume Next
+    Dim ufile
+    Set ufile = fso.CreateTextFile(userConfigFile, True)
+    ufile.WriteLine configContent
+    ufile.Close
+    If Err.Number <> 0 Then
+        Call WriteLog("HIBA: Felhasznalo-szintu konfig iras sikertelen: " & Err.Description)
+        WriteNetworkConfig = False
+    Else
+        Call WriteLog("Konfig leirva: " & userConfigFile)
+    End If
+    On Error GoTo 0
+
+    ' 2) Projekt-szintu masolat (best-effort, halozaton lehet hogy read-only)
+    If Not fso.FolderExists(installPath & "\settings") Then
+        On Error Resume Next : fso.CreateFolder(installPath & "\settings") : On Error GoTo 0
+    End If
+    Dim configFile
+    configFile = installPath & "\settings\system-config.json"
+
     On Error Resume Next
     Dim file
     Set file = fso.CreateTextFile(configFile, True)
     file.WriteLine configContent
     file.Close
     If Err.Number <> 0 Then
-        Call WriteLog("HIBA: Halozati konfig iras sikertelen: " & Err.Description)
-        WriteNetworkConfig = False
+        Call WriteLog("FIGY: Projekt-szintu konfig nem irhato (halozati read-only?): " & Err.Description)
     Else
         Call WriteLog("Halozati konfig leirva: " & configFile)
     End If

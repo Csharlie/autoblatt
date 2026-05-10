@@ -107,9 +107,56 @@ Public Function GetOneDrivePath() As String
     GetOneDrivePath = p
 End Function
 
-' Az autoblatt app gyokere (a futtato xlsm/xlsb mappaja).
+' A futtato workbook fizikai mappaja (Documents\autoblatt vagy OneDrive\Autoblatt\app).
+Public Function GetWorkbookPath() As String
+    GetWorkbookPath = ThisWorkbook.Path
+End Function
+
+' Az autoblatt projekt forras-mappaja (ahonnan a .bas modulok jonnek).
+' Sorrend:
+'   1. config "installPath" mezoje (ha letezik es ervenyes)
+'   2. ThisWorkbook.Path (fejlesztoi mod, ahol az xlsm van)
 Public Function GetAppRootPath() As String
+    Dim configured As String
+    configured = ReadInstallPathFromConfig()
+    If Len(configured) > 0 Then
+        ' Ervenyesseg ellenorzes: letezik-e a core mappa?
+        If Dir(configured & "\core", vbDirectory) <> "" Then
+            GetAppRootPath = configured
+            Exit Function
+        End If
+    End If
     GetAppRootPath = ThisWorkbook.Path
+End Function
+
+' Beolvassa az installPath-ot a felhasznalo-szintu config fajlbol.
+' Ez nem fugg az ertekek elhelyezkedesetol - mindig a %LOCALAPPDATA%-bol.
+Private Function ReadInstallPathFromConfig() As String
+    Dim path As String
+    path = GetConfigPath()
+    If Dir(path) = "" Then
+        ReadInstallPathFromConfig = ""
+        Exit Function
+    End If
+
+    Dim fnum As Integer
+    Dim content As String
+    fnum = FreeFile
+    Open path For Input As #fnum
+    Do While Not EOF(fnum)
+        Dim line As String
+        Line Input #fnum, line
+        content = content & line & vbLf
+    Loop
+    Close #fnum
+
+    Dim val As String
+    val = GetJsonString(content, "installPath")
+    ' Az escape-elt backslash visszaalakitasa (\\\\  ->  \)
+    val = Replace(val, "\\", "\")
+    ' Trailing backslash levagas
+    If Right(val, 1) = "\" Then val = Left(val, Len(val) - 1)
+    ReadInstallPathFromConfig = val
 End Function
 
 ' Letrehoz egy mappat es minden hianyzo szuloket. Idempotens.
@@ -126,9 +173,11 @@ Public Sub EnsureFolder(ByVal folderPath As String)
     On Error GoTo 0
 End Sub
 
-' system-config.json utvonala. Az app gyokere alatt: settings\system-config.json
+' system-config.json utvonala. Felhasznalo-szintu hely (per Windows-user):
+'   %LOCALAPPDATA%\Autoblatt\system-config.json
+' Itt elnevezesi konflikus nem lehetseges, es a workbook helye nem fugg ettol.
 Public Function GetConfigPath() As String
-    GetConfigPath = GetAppRootPath() & "\settings\system-config.json"
+    GetConfigPath = Environ("LOCALAPPDATA") & "\" & APP_NAME & "\system-config.json"
 End Function
 
 ' ------------------------------------------------------------
