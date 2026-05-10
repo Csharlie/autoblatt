@@ -88,9 +88,22 @@ Private Function ExtractJsonValue(ByVal content As String, ByVal key As String) 
     valStart = InStr(startPos + Len(pattern), content, """")
     If valStart = 0 Then Exit Function
 
+    ' Az ertek vege a kovetkezo nem-escapelt "
+    ' (paros szamu backslash elotte = nem escape, paratlan = escape)
     valEnd = valStart + 1
     Do While valEnd <= Len(content)
-        If Mid(content, valEnd, 1) = """" And Mid(content, valEnd - 1, 1) <> "\" Then Exit Do
+        If Mid(content, valEnd, 1) = """" Then
+            Dim slashes As Long
+            slashes = 0
+            Do While valEnd - 1 - slashes >= valStart + 1
+                If Mid(content, valEnd - 1 - slashes, 1) = "\" Then
+                    slashes = slashes + 1
+                Else
+                    Exit Do
+                End If
+            Loop
+            If slashes Mod 2 = 0 Then Exit Do
+        End If
         valEnd = valEnd + 1
     Loop
 

@@ -237,12 +237,24 @@ Public Function GetJsonString(ByVal jsonText As String, ByVal key As String) As 
     End If
 
     ' Az ertek vege a kovetkezo nem-escapelt "
+    ' (paros szamu backslash elotte = nem escape, paratlan = escape)
     Dim i As Long
     i = valStart + 1
     Do While i <= Len(jsonText)
-        If Mid(jsonText, i, 1) = """" And Mid(jsonText, i - 1, 1) <> "\" Then
-            endPos = i
-            Exit Do
+        If Mid(jsonText, i, 1) = """" Then
+            Dim slashes As Long
+            slashes = 0
+            Do While i - 1 - slashes >= valStart + 1
+                If Mid(jsonText, i - 1 - slashes, 1) = "\" Then
+                    slashes = slashes + 1
+                Else
+                    Exit Do
+                End If
+            Loop
+            If slashes Mod 2 = 0 Then
+                endPos = i
+                Exit Do
+            End If
         End If
         i = i + 1
     Loop
