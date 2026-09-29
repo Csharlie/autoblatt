@@ -1,0 +1,18 @@
+# Tesztadat és eredeti forrásfájlok – nem kerülnek fel
+test-data/
+TERM_KADATOK*.xlsx
+
+# Excel ideiglenes / zárolási fájlok
+~$*
+*.tmp
+
+# Munkafüzetek: céges jóváhagyásig nem kerülnek fel (a OneDrive-on vannak)
+workbooks/*.xlsm
+
+# Rendszerfájlok
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Régi autoblatt: éles személyzeti adat
+data/data.xlsm
