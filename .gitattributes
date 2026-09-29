@@ -1,0 +1,10 @@
+# VBA forrás: CRLF, hogy a VBE import ne rontsa el a sorokat
+*.bas text eol=crlf
+*.cls text eol=crlf
+*.frm text eol=crlf
+*.vba text eol=crlf
+
+# Excel: bináris
+*.xlsm binary
+*.xlsx binary
+*.frx binary
