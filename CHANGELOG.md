@@ -22,3 +22,10 @@
 | 1.2 | 2026.09.23. | „Forrás kiemelés” oszlop (a forrás sárga/piros jelölései szövegként); színátvétel csak ha `nmForrasSzinek` = Igen; a gomb helye E1. |
 | 1.1 | – | A Sorozat saját oszlop (csak üreset tölt), új „Sorozat (forrás)” oszlop; a kis- és nagybetű, illetve a szélső szóköz eltérése nem változás. |
 | 1.0 | – | Első változat: horgonyszöveges beolvasás, előnézet, változásnapló, állapotmentés. |
+
+## Fejlesztői eszközök
+
+| Eszköz | Verzió | Dátum | Változás |
+|---|---|---|---|
+| code-loader (`modKodFrissites`) | 1.0.1 | 2026.09.29. | A mappa- és fájlvizsgálat `GetAttr`-ral: a `Dir` nem látta a rejtett `AppData` mappát, ezért a mentés „Path/File access error”-ral leállt. |
+| | 1.0 | 2026.09.29. | `KodFrissitese`: a munkafüzet moduljait és a Fotoblatt lapkódját lecseréli az `src/` változatra; előtte ellenőriz (ASCII, modulnév) és a régi kódot elmenti. |

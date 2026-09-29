@@ -48,10 +48,12 @@ autoblatt/
 │   ├── fotoblatt-setup.bas           VB modul: modBeallitas
 │   ├── fotoblatt-parts-import.bas    VB modul: modTermekadatok (Fotoblatt oldal)
 │   ├── fotoblatt-sheet-events.vba    a Fotoblatt lap kódja (beillesztendő, nem importálható)
-│   └── lbl-product-data-import.bas   VB modul: modTermekadatok (LBL oldal)
+│   ├── lbl-product-data-import.bas   VB modul: modTermekadatok (LBL oldal)
+│   └── code-loader.bas               VB modul: modKodFrissites (mindkét munkafüzetben; fejlesztői eszköz)
 ├── docs/
 │   ├── fotoblatt-install.md
-│   └── lbl-product-data-install.md
+│   ├── lbl-product-data-install.md
+│   └── development.md                ← fejlesztés: kódfrissítés src-ből (KodFrissitese)
 └── test-data/                        ← gitignore, nem kerül fel
     └── lbl-source-data-v3-sample.xlsx
 ```
@@ -152,7 +154,8 @@ A régi kód később is elérhető, például ha egy funkciót (e-mail, képimp
 ### 5.4 Munkamenet
 - A `main` ág mindig működő állapot. Fejlesztés rövid ágon (`feat/g6-fix`, `fix/…`), kész után merge és az ág törlése. Nincsenek hosszan élő `dev` ágak.
 - Commitüzenet: `feat:` / `fix:` / `docs:` / `chore:`.
-- Változtatás Excelben/VBE-ben, a OneDrive-on lévő munkafüzetben → az érintett modul exportja (jobb klikk → Export File) a `C:\Users\pesardy\Projects\autoblatt\src\` mappába, a fenti néven, felülírva a régit. A lapkódot (`fotoblatt-sheet-events.vba`) kézzel kell átmásolni (VBE → shFotoblatt → Ctrl+A, Ctrl+C).
+- A kódot a `C:\Users\pesardy\Projects\autoblatt\src\` mappában szerkeszted (pl. VS Code). A OneDrive-on lévő munkafüzetben Alt+F8 → `KodFrissitese`: a makró lecseréli a munkafüzet moduljait és a Fotoblatt lapkódját az `src/` változatra (előtte elmenti a régit), utána Debug → Compile VBAProject, próba, mentés. Részletek: [`docs/development.md`](docs/development.md).
+- A VBE-ben ne javíts: a következő `KodFrissitese` felülírja. Ha mégis ott javítottál, a változást kézzel vidd át az `src/` fájlba.
 - A fejléc `Verzio` sorának és a `CHANGELOG.md`-nek a frissítése, majd commit és tag (`v9.15`, `lbl-v1.3`).
 - **Tilos:** a régi bővítmény `AB_SaveToDrive` makróját az új `fotoblatt.xlsm`-en futtatni. Kiüríti a `Data` lapot (User, Type, OP stb. táblák), és a teljes munkafüzetben szöveget cserél.
 
