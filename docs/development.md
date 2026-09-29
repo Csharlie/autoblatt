@@ -1,4 +1,4 @@
-# Fejlesztés – kódfrissítés src-ből (code-loader 1.0.1)
+# Fejlesztés – kódfrissítés src-ből (code-loader 1.0.2)
 
 A kód a git-repóban él, a munkafüzetek a OneDrive-on futnak. A kettőt a `KodFrissitese` makró köti össze: a munkafüzetben futtatva lecseréli annak kódját az `src/` mappában lévő változatra.
 

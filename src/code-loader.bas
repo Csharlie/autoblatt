@@ -1,8 +1,9 @@
 Attribute VB_Name = "modKodFrissites"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Kodfrissites a git-repo src mappajabol (fejlesztoi eszkoz)
-' Verzio 1.0.1 - 2026.09.29.
+' Kodfrissites a fejlesztoi forras mappabol (fejlesztoi eszkoz)
+' Verzio 1.0.2 - 2026.09.29.
+'   1.0.2: uzenetek es megjegyzesek egyszerusitese
 '   1.0.1: mappa/fajl letezes GetAttr-ral (a Dir nem latta a rejtett
 '          AppData mappat -> "Path/File access error" a mentesnel)
 '   1.0: KodFrissitese - a munkafuzet moduljait es lapkodjat lecsereli az
@@ -32,7 +33,7 @@ Option Explicit
 Private Const KF_CIM         As String = "Kodfrissites"
 Private Const KF_NEV_SRC     As String = "KodForrasUtvonal"      ' rejtett nev: a valasztott src mappa
 Private Const KF_SRC_ALAP    As String = "\Projects\autoblatt\src" ' %USERPROFILE% alatt
-Private Const KF_JELZO_FAJL  As String = "code-loader.bas"         ' ebbol tudja, hogy ez a repo src mappaja
+Private Const KF_JELZO_FAJL  As String = "code-loader.bas"         ' ebbol ismeri fel a forras mappat
 Private Const KF_MENTES      As String = "\autoblatt\kodmentes"    ' %LOCALAPPDATA% alatt
 
 Private Const KF_MODUL       As String = "M"    ' standard modul (.bas)
@@ -325,14 +326,14 @@ Private Function KfSrcMappa() As String
     End If
 
     With Application.FileDialog(4)          ' msoFileDialogFolderPicker
-        .Title = "A git-repo src mappajanak kivalasztasa"
+        .Title = "A forras mappa kivalasztasa"
         .AllowMultiSelect = False
         If .Show <> -1 Then Exit Function
         ut = .SelectedItems(1)
     End With
 
     If Not KfSrcRendben(ut) Then
-        MsgBox "Ebben a mappaban nincs " & KF_JELZO_FAJL & ", ez nem a repo src mappaja:" & vbLf & ut, _
+        MsgBox "Ebben a mappaban nincs " & KF_JELZO_FAJL & ", ez nem a forras mappa:" & vbLf & ut, _
                vbExclamation, KF_CIM
         Exit Function
     End If

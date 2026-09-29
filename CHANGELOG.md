@@ -27,5 +27,6 @@
 
 | Eszköz | Verzió | Dátum | Változás |
 |---|---|---|---|
-| code-loader (`modKodFrissites`) | 1.0.1 | 2026.09.29. | A mappa- és fájlvizsgálat `GetAttr`-ral: a `Dir` nem látta a rejtett `AppData` mappát, ezért a mentés „Path/File access error”-ral leállt. |
+| code-loader (`modKodFrissites`) | 1.0.2 | 2026.09.29. | Üzenetek és megjegyzések egyszerűsítése („forrás mappa”). |
+| | 1.0.1 | 2026.09.29. | A mappa- és fájlvizsgálat `GetAttr`-ral: a `Dir` nem látta a rejtett `AppData` mappát, ezért a mentés „Path/File access error”-ral leállt. |
 | | 1.0 | 2026.09.29. | `KodFrissitese`: a munkafüzet moduljait és a Fotoblatt lapkódját lecseréli az `src/` változatra; előtte ellenőriz (ASCII, modulnév) és a régi kódot elmenti. |

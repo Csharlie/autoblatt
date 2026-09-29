@@ -1,7 +1,7 @@
 # Handoff – autoblatt (Fotoblatt + LBL Product Data)
 
 Állapot: 2026.09.29. · Karbantartó: Sárdy Péter (PESARDY), MBMH Kecskemét – PW
-Ez a dokumentum az `autoblatt` repó kiindulópontja. A korábbi autoblatt-bővítmény (az AutoSheets utódja) az `autoblatt-archive` repóba került, l. 5. pont. Korábbi, részletes előzmények: [közös handoff dokumentum](https://claude.ai/code/artifact/a8093a1e-9248-4dfc-9656-77789670176e).
+Ez a dokumentum az `autoblatt` repó kiindulópontja. A korábbi autoblatt-bővítmény (az AutoSheets utódja) az `autoblatt-archive` repóba került, l. 5. pont.
 
 ---
 
