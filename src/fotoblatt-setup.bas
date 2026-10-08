@@ -1,7 +1,9 @@
 Attribute VB_Name = "modBeallitas"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.2 - 2026.09.22.
+' Verzio 9.16 - 2026.10.08.
+'   9.16: a beallitas vegen a TERMEKADATOK utan a cikkszamtorzs (A/N-szamok)
+'         beolvasasat is felajanlja (CikkszamtorzsFrissitese).
 '
 ' A kod Sardy Peter munkaja. Modositas elott egyeztess vele.
 
@@ -99,6 +101,12 @@ Public Sub SetupFotolap()
     If MsgBox("Beolvassam most a TERMEKADATOK fajlt (R-szamok)?", _
               vbQuestion + vbYesNo, "Fotolap beallitas") = vbYes Then
         TermekadatokFrissitese
+    End If
+
+    ' v9.16: A- es N-szamok a cikkszamtorzsbol
+    If MsgBox("Beolvassam most a cikksz" & ChrW(225) & "mt" & ChrW(246) & "rzset (A/N-sz" & _
+              ChrW(225) & "mok)?", vbQuestion + vbYesNo, "Fotolap beallitas") = vbYes Then
+        CikkszamtorzsFrissitese
     End If
     Exit Sub
 

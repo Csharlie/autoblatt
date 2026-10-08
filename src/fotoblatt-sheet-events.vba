@@ -1,6 +1,8 @@
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.14 - 2026.09.29.
+' Verzio 9.15 - 2026.10.08.
+'   9.15: egyseges cikkszam-formatum (pl. "R244 637 0100"), csak a komment
+'         peldaja frissult, a logika nem valtozott.
 '   9.14: - E4/E6 kozvetlenul az A6 alapjan valt, MINDEN mas lepes elott
 '           (R-szam -> "Alapanyag/Material" + "Platine"; A-szam vagy ures
 '           A6 -> "Preseles/Abpressung", az automatikus "Platine" torolve).
@@ -67,7 +69,7 @@ End Sub
 
 '--------------------------------------------------------------------------
 ' E4 / E6 az A6 elso betuje alapjan.
-' A legordulo szovege ("R 244 637 0100 . Megnevezes . Tipus") es a beirt
+' A legordulo szovege ("R244 637 0100 . Megnevezes . Tipus") es a beirt
 ' cikkszam is a szammal kezdodik, ezert eleg az elso karakter.
 '--------------------------------------------------------------------------
 Private Sub AnyagFelirat()

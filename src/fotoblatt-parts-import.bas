@@ -1,7 +1,24 @@
 Attribute VB_Name = "modTermekadatok"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.13 - 2026.09.24.
+' Verzio 9.16 - 2026.10.08.
+'   9.16: uj forras az A- es N-szamokhoz: Autoblatt_Cikkszamtorzs.xlsx /
+'        tblCikkszam, uj makro: CikkszamtorzsFrissitese (elonezettel; az
+'        Article nem R sorait lecsereli, az R-sorok valtozatlanok). A
+'        cikkszam kivalasztasakor a G6 es a H6 mindig a tetel szerint all
+'        be: ures tipusnal a G6 kiurul, ures berendezesnel a H6 a
+'        H6_URES_HA_NINCS_BERENDEZES szerint kiurul vagy marad. A 9.12-es
+'        "A-szam = mindig 7.41" szabaly KIVEZETVE: a berendezes minden
+'        cikkszamnal a tetel sajat Berendezes erteke.
+'   9.15: egyseges cikkszam-formatum: betu + 3-3-4, pl. "A177 637 0100" /
+'        "R177 637 0100" (az N-szam valtozatlan). Uj kozos fuggvenyek:
+'        CikkszamFormatum, CikkszamErvenyes (a nem hasznalt RSzamFormatum
+'        torolve). A Lista oszlop a tarolt format mutatja (a 9.6-os
+'        SUBSTITUTE kivezetve), az A6-ba mindig az egyseges forma kerul,
+'        talalat nelkul is. Import: az R-szam is egyseges formara kerul, a
+'        nem szabvanyos szam jelolve. ArticleTisztitas: minden sor (R is)
+'        egyseges formara, a nem szabvanyos cikkszam jelolve, az elonezet
+'        listazza az utkozo megnevezesu cikkszamokat.
 '   9.13: R-cikkszam kivalasztasakor az E4 fejlec "Alapanyag/Material"-ra
 '        valt (eredetileg "Preseles/Abpressung"), es az E6 cellaba
 '        "Platine" kerul. Minden mas esetben (pl. A-cikkszam) az E4
@@ -48,21 +65,35 @@ Option Explicit
 Option Compare Text
 
 '==========================================================================
-' Termekadatok (LBL 7.50) -> Parts!Article, es az A6 cikkszam-legordulo
+' Termekadatok (LBL 7.50) es cikkszamtorzs -> Parts!Article, es az A6
+' cikkszam-legordulo
 '--------------------------------------------------------------------------
 ' Parts!Article oszlopai (a nev szamit, a sorrend nem):
-'   PartNum    - cikkszam (A/N: szokoz nelkul, R: ahogy a sajat fajlban all)
+'   PartNum    - cikkszam, egyseges forma: A177 637 0100 / R177 637 0100 (N-szam valtozatlan)
 '   PartName   - megnevezes
-'   Type       - tipus (R-szamnal a sajat tblTermek 'Tipus' oszlopabol)
-'   Forras     - A = alkatresz-torzs, R = sajat termekadatok (a frissites kezeli)
+'   Type       - tipus (R: tblTermek 'Tipus', A/N: tblCikkszam 'Tipus'), lehet ures
+'   Forras     - R = LBL sajat termekadatok, A / N = cikkszamtorzs (ld. lent)
 '   Statusz    - Aktiv / Kifutott (ures = aktiv)
-'   Berendezes - R-szamnal a sajat tblTermek 'Berendezes' oszlopabol (7.50/7.41/7.22),
-'                hianyaban 7.50
-'   Ellenorzes - tisztitasi megjegyzes (utkozo megnevezes, hianyzo adat)
+'   Berendezes - a tetel sajat berendezese (7.50/7.41/7.22), lehet ures;
+'                R-szamnal oszlop hianyaban 7.50
+'   Ellenorzes - megjegyzes (tisztitas, nyitott tetel a cikkszamtorzsben)
 '   Lista      - keplet: "Cikkszam . Megnevezes . Tipus (kifutott)"
 '
-' Forras: a sajat LBL_Termekadatok_sajat.xlsm tblTermek tablaja.
-'   - Termekszam -> PartNum (ahogy ott all, nem formazzuk ujra)
+' Ket forras (v9.16), mindketto csak a sajat sorait csereli:
+'
+' A) A- es N-szamok: Autoblatt_Cikkszamtorzs.xlsx / tblCikkszam, a
+'    CikkszamtorzsFrissitese olvassa (csak a Csoport <> "R" sorokat):
+'   - Cikkszam -> PartNum, Megnevezes -> PartName, Tipus -> Type,
+'     Csoport -> Forras, Berendezes -> Berendezes (szovegkent, "7.41")
+'   - Statusz  -> "Kifutott" = jelolve; "...eltunt a forrasbol..." = kimarad;
+'                 minden mas = aktiv
+'   - Ellenorzes (db) > 0 -> Ellenorzes: "Ellenorizendo (cikkszamtorzs)"
+'   A fejlecet PONTOS egyezessel keressuk (NormB), igy a "Tipus (forras)",
+'   "Tipus (kezi)" stb. oszlop nem talal, csak a szamolt "Tipus".
+'
+' B) R-szamok: LBL_Termekadatok_sajat.xlsm / tblTermek, a
+'    TermekadatokFrissitese olvassa:
+'   - Termekszam -> PartNum (egyseges formara hozva, l. CikkszamFormatum)
 '   - Termeknev  -> PartName
 '   - Tipus      -> Type (uj kodot automatikusan felvesz a Type tablaba)
 '   - Berendezes -> Berendezes (oszlop hianyaban 7.50, figyelmeztetessel)
@@ -72,7 +103,7 @@ Option Compare Text
 ' (Termekszam/Cikkszam, Termeknev/Megnevezes, Tipus, Berendezes, Statusz).
 '
 ' Az A6 legordulo forrasa az A6Lista nev (Parts!J oszlop), ezt az
-' A6ListaFrissites epiti ujra H6 vagy G6 valtozasakor:
+' A6ListaFrissites epiti ujra. A tartalma nem fugg H6-tol es G6-tol (v9.5):
 '   MINDIG -> az osszes cikkszam (R aktiv, R kifutott, A), fuggetlenul
 '             H6-tol ES G6-tol is (nincs szures egyik alapjan sem)
 '
@@ -99,11 +130,19 @@ Public Const BERENDEZES_LBL As String = "7.50"
 Private Const LISTA_OSZLOP  As Long = 10          ' Parts!J
 Private Const STAT_KIFUTOTT As String = "Kifutott"
 
+'--- Viselkedes (v9.16) ----------------------------------------------------
+' True  = ha a kivalasztott tetelnek nincs Berendezes erteke, a H6 kiurul
+'         (a kerdesblokk elrejtodik, a berendezest kezzel kell valasztani)
+' False = ilyenkor a H6 marad, ahogy volt
+Public Const H6_URES_HA_NINCS_BERENDEZES As Boolean = True
+
 '--- Forrasfajl -----------------------------------------------------------
 Private Const TERMEKADATOK_MAPPA As String = _
     "P:\_Departments\PW\2. PW_Fertigung\4_LB-XL_7.50_Laser_Blanking_line\07_TEAM\"
 Private Const NEV_UTVONAL As String = "TermekadatokUtvonal"   ' rejtett nev
 Private Const T_TERMEK As String = "tblTermek"
+Private Const NEV_TORZS_UTVONAL As String = "CikkszamtorzsUtvonal"   ' rejtett nev
+Private Const T_CIKKSZAM As String = "tblCikkszam"
 
 '==========================================================================
 ' 1. Termekadatok frissitese (Alt+F8 -> TermekadatokFrissitese)
@@ -414,23 +453,337 @@ Private Function NyitottMunkafuzet(ByVal fajl As String) As Workbook
     Next wb
 End Function
 
-Private Sub UtvonalMentes(ByVal fajl As String)
+' v9.16: a rejtett nev parameter (alapertelmezes: TermekadatokUtvonal)
+Private Sub UtvonalMentes(ByVal fajl As String, Optional ByVal nev As String = NEV_UTVONAL)
     On Error Resume Next
-    ThisWorkbook.Names(NEV_UTVONAL).Delete
+    ThisWorkbook.Names(nev).Delete
     On Error GoTo 0
-    ThisWorkbook.Names.Add Name:=NEV_UTVONAL, _
+    ThisWorkbook.Names.Add Name:=nev, _
         RefersTo:="=""" & Replace(fajl, """", """""") & """", Visible:=False
 End Sub
 
-Private Function UtvonalOlvasas() As String
+Private Function UtvonalOlvasas(Optional ByVal nev As String = NEV_UTVONAL) As String
     Dim s As String
     On Error Resume Next
-    s = ThisWorkbook.Names(NEV_UTVONAL).RefersTo      ' ="P:\...\x.xlsx"
+    s = ThisWorkbook.Names(nev).RefersTo              ' ="P:\...\x.xlsx"
     On Error GoTo 0
     If Len(s) > 3 Then
         s = Mid$(s, 3, Len(s) - 3)
         UtvonalOlvasas = Replace(s, """""", """")
     End If
+End Function
+
+'==========================================================================
+' 1b. Cikkszamtorzs frissitese (Alt+F8 -> CikkszamtorzsFrissitese), v9.16
+'--------------------------------------------------------------------------
+' A forras az Autoblatt_Cikkszamtorzs.xlsx tblCikkszam tablaja. Csak az A-
+' es N-szamokat (Csoport <> "R") vesszuk at: az Article nem R sorait teljesen
+' lecsereljuk, az R-sorokhoz (LBL, TermekadatokFrissitese) nem nyulunk.
+' A fajlt csak olvasasra nyitjuk meg, es mentes nelkul zarjuk be.
+'==========================================================================
+Public Sub CikkszamtorzsFrissitese()
+
+    Const MAX_UJ_PELDA As Long = 10
+    Const MAX_ELTUNO_PELDA As Long = 15
+
+    Dim fajl As String
+    Dim src As Workbook, sajatNyitas As Boolean
+    Dim lo As ListObject
+    Dim torzs() As Variant, nTorzs As Long
+    Dim dTorzs As Object, dRegi As Object, dR As Object, dTipus As Object
+    Dim vNum As Variant, vSrc As Variant, idx As Variant
+    Dim i As Long, k As String, tip As String
+    Dim nR As Long, nRegiNemR As Long, nUjCikk As Long, nEltunik As Long
+    Dim nTipus As Long, nBer As Long, nKihagyott As Long, nRUtkozes As Long, nDupla As Long
+    Dim ujPeldak As String, eltunoPeldak As String, ujTipusok As String
+    Dim uzenet As String, lepes As String
+
+    On Error GoTo Hiba
+
+    lepes = "fajl kivalasztasa"
+    fajl = TorzsFajlValasztas()
+    If Len(fajl) = 0 Then Exit Sub
+
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.DisplayAlerts = False
+
+    lepes = "Article oszlopok ellenorzese"
+    ArticleOszlopokBiztositasa
+
+    '--- Jelenlegi Article: R-kulcsok es a cserelendo A/N-kulcsok ---------
+    lepes = "Article beolvasasa"
+    Set lo = ThisWorkbook.Worksheets(SH_PARTS).ListObjects(LO_ARTICLE)
+    Set dRegi = CreateObject("Scripting.Dictionary")
+    dRegi.CompareMode = vbTextCompare
+    Set dR = CreateObject("Scripting.Dictionary")
+    dR.CompareMode = vbTextCompare
+    If Not lo.DataBodyRange Is Nothing Then
+        vNum = OszlopTomb(lo, C_NUM)
+        vSrc = OszlopTomb(lo, C_SRC)
+        For i = 1 To UBound(vNum, 1)
+            k = Kulcs(Szoveg(vNum(i, 1)))
+            If StrComp(Szoveg(vSrc(i, 1)), "R", vbTextCompare) = 0 Then
+                nR = nR + 1
+                If Len(k) > 0 Then dR(k) = True
+            Else
+                nRegiNemR = nRegiNemR + 1
+                If Len(k) > 0 Then
+                    If Not dRegi.Exists(k) Then dRegi.Add k, CikkszamFormatum(Szoveg(vNum(i, 1)))
+                End If
+            End If
+        Next i
+    End If
+
+    '--- Forras megnyitasa (ha mar nyitva van, azt hasznaljuk) ------------
+    lepes = "forrasfajl megnyitasa"
+    Set src = NyitottMunkafuzet(fajl)
+    If src Is Nothing Then
+        Set src = Workbooks.Open(Filename:=fajl, ReadOnly:=True, _
+                                 UpdateLinks:=0, AddToMru:=False)
+        sajatNyitas = True
+    End If
+
+    lepes = "tblCikkszam beolvasasa"
+    Set dTorzs = CreateObject("Scripting.Dictionary")
+    dTorzs.CompareMode = vbTextCompare
+    TorzsTablaBeolvasasa src, dR, dTorzs, torzs, nTorzs, nKihagyott, nRUtkozes, nDupla
+
+    If sajatNyitas Then src.Close SaveChanges:=False
+    Set src = Nothing
+
+    If nTorzs = 0 Then
+        Err.Raise vbObjectError + 542, , "A tblCikkszam tablaban nincs atveheto A/N-cikkszam."
+    End If
+
+    '--- Elonezet ---------------------------------------------------------
+    lepes = "elonezet"
+    For i = 1 To nTorzs
+        If Len(Szoveg(torzs(i, 3))) > 0 Then nTipus = nTipus + 1
+        If Len(Szoveg(torzs(i, 6))) > 0 Then nBer = nBer + 1
+        If Not dRegi.Exists(Kulcs(Szoveg(torzs(i, 1)))) Then
+            nUjCikk = nUjCikk + 1
+            If nUjCikk <= MAX_UJ_PELDA Then ujPeldak = ujPeldak & "  " & torzs(i, 1) & vbLf
+        End If
+    Next i
+    If nUjCikk > MAX_UJ_PELDA Then ujPeldak = ujPeldak & TovabbiSzoveg(nUjCikk - MAX_UJ_PELDA)
+
+    For Each idx In dRegi.Keys
+        If Not dTorzs.Exists(idx) Then
+            nEltunik = nEltunik + 1
+            If nEltunik <= MAX_ELTUNO_PELDA Then eltunoPeldak = eltunoPeldak & "  " & dRegi(idx) & vbLf
+        End If
+    Next idx
+    If nEltunik > MAX_ELTUNO_PELDA Then eltunoPeldak = eltunoPeldak & TovabbiSzoveg(nEltunik - MAX_ELTUNO_PELDA)
+
+    uzenet = "Cikkszamtorzs - elonezet" & vbLf & _
+             "Forras: " & Mid$(fajl, InStrRev(fajl, "\") + 1) & vbLf & vbLf & _
+             "A/N-sorok most: " & nRegiNemR & vbLf & _
+             "A/N-sorok utana: " & nTorzs & vbLf & _
+             "R-sorok (valtozatlanok): " & nR & vbLf & vbLf & _
+             "Tipust kap: " & nTipus & vbLf & _
+             "Berendezest kap: " & nBer & vbLf
+    If nKihagyott > 0 Then uzenet = uzenet & _
+        "Kihagyva (eltunt a forrasbol): " & nKihagyott & vbLf
+    If nRUtkozes > 0 Then uzenet = uzenet & _
+        "Kihagyva (R-sorkent mar megvan): " & nRUtkozes & vbLf
+    If nDupla > 0 Then uzenet = uzenet & _
+        "Ismetlodo cikkszam a torzsben (az elso maradt): " & nDupla & vbLf
+    uzenet = uzenet & vbLf & "Uj cikkszam: " & nUjCikk & vbLf & ujPeldak & _
+             vbLf & "Eltuno A/N-cikkszam (nincs a torzsben): " & nEltunik & vbLf & eltunoPeldak & _
+             vbLf & "Vegrehajtsam? (Elotte erdemes elmenteni egy masolatot.)"
+
+    Application.ScreenUpdating = True
+    If MsgBox(uzenet, vbQuestion + vbYesNo + vbDefaultButton2, "Cikkszamtorzs frissitese") <> vbYes Then GoTo Vege
+    Application.ScreenUpdating = False
+
+    '--- Article ujrairasa: R-sorok maradnak, A/N-sorok cserelodnek -------
+    lepes = "Article ujrairasa"
+    ArticleNemRSorokCsereje torzs, nTorzs
+
+    '--- Uj tipuskodok a Type tablaba -------------------------------------
+    lepes = "Type tabla bovitese"
+    Set dTipus = CreateObject("Scripting.Dictionary")
+    dTipus.CompareMode = vbTextCompare
+    For i = 1 To nTorzs
+        tip = Szoveg(torzs(i, 3))
+        If Len(tip) > 0 Then
+            If Not dTipus.Exists(tip) Then
+                dTipus.Add tip, True
+                If TipusBiztositas(tip) Then ujTipusok = ujTipusok & "  " & tip & vbLf
+            End If
+        End If
+    Next i
+
+    '--- Utvonal megjegyzese, lista ujraepitese ---------------------------
+    lepes = "utvonal mentese"
+    UtvonalMentes fajl, NEV_TORZS_UTVONAL
+
+    lepes = "A6 lista ujraepitese"
+    A6ListaFrissites
+
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+
+    '--- Osszegzes --------------------------------------------------------
+    uzenet = "Forras: " & Mid$(fajl, InStrRev(fajl, "\") + 1) & vbLf & vbLf & _
+             "A/N-cikkszamok az Article tablaban: " & nTorzs & vbLf & _
+             "R-sorok (valtozatlanok): " & nR & vbLf
+    If Len(ujTipusok) > 0 Then uzenet = uzenet & vbLf & _
+        "Uj tipuskod a Type tablaban:" & vbLf & ujTipusok
+
+    MsgBox uzenet, vbInformation, "Cikkszamtorzs frissitese"
+    Exit Sub
+
+Vege:
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    Exit Sub
+
+Hiba:
+    Dim hSzam As Long, hSzoveg As String
+    hSzam = Err.Number: hSzoveg = Err.Description
+    On Error Resume Next
+    If sajatNyitas Then
+        If Not src Is Nothing Then src.Close SaveChanges:=False
+    End If
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    MsgBox "A frissites megszakadt [" & lepes & "]:" & vbLf & hSzoveg & _
+           " (" & hSzam & ")", vbExclamation, "Cikkszamtorzs frissitese"
+End Sub
+
+'--------------------------------------------------------------------------
+' tblCikkszam -> torzs(1..n, 1..7), az Article oszlopsorrendjeben:
+' PartNum, PartName, Type, Forras, Statusz, Berendezes, Ellenorzes.
+' Kimarad: Csoport = "R" (LBL), "eltunt a forrasbol" statusz, az Article-ben
+' mar R-sorkent meglevo kulcs (nRUtkozes) es az ismetlodo kulcs (nDupla).
+' dTorzs(kulcs) = sorindex a torzs tombben.
+'--------------------------------------------------------------------------
+Private Sub TorzsTablaBeolvasasa(src As Workbook, dR As Object, dTorzs As Object, _
+                                 torzs() As Variant, ByRef nTorzs As Long, _
+                                 ByRef nKihagyott As Long, ByRef nRUtkozes As Long, _
+                                 ByRef nDupla As Long)
+
+    Dim lo As ListObject, v As Variant, db As Variant
+    Dim cNum As Long, cNev As Long, cTip As Long, cStat As Long
+    Dim cBer As Long, cCsop As Long, cEll As Long
+    Dim r As Long, k As String, csop As String, stat As String, hiany As String
+
+    Set lo = TablaBarmelyLapon(src, T_CIKKSZAM)
+    If lo Is Nothing Then
+        Err.Raise vbObjectError + 540, , _
+            "A fajlban nem talalhato 'tblCikkszam' tabla. Az Autoblatt_Cikkszamtorzs fajlt valasztottad?"
+    End If
+    If lo.DataBodyRange Is Nothing Then
+        Err.Raise vbObjectError + 541, , "A 'tblCikkszam' tabla ures."
+    End If
+
+    ' PONTOS fejlec-egyezes (NormB): a "Tipus (forras)", "Tipus (kezi)",
+    ' "Statusz (forras)" stb. normalizalt neve mas, igy azok nem talalnak.
+    cNum = OszlopFejlecAlapjan(lo, Array("CIKKSZAM"))
+    cNev = OszlopFejlecAlapjan(lo, Array("MEGNEVEZES"))
+    cTip = OszlopFejlecAlapjan(lo, Array("TIPUS"))
+    cStat = OszlopFejlecAlapjan(lo, Array("STATUSZ"))
+    cBer = OszlopFejlecAlapjan(lo, Array("BERENDEZES"))
+    cCsop = OszlopFejlecAlapjan(lo, Array("CSOPORT"))
+    cEll = OszlopFejlecAlapjan(lo, Array("ELLENORZESDB"))
+    If cNum = 0 Then hiany = hiany & " Cikkszam,"
+    If cNev = 0 Then hiany = hiany & " Megnevezes,"
+    If cTip = 0 Then hiany = hiany & " Tipus,"
+    If cStat = 0 Then hiany = hiany & " Statusz,"
+    If cBer = 0 Then hiany = hiany & " Berendezes,"
+    If cCsop = 0 Then hiany = hiany & " Csoport,"
+    If cEll = 0 Then hiany = hiany & " Ellenorzes (db),"
+    If Len(hiany) > 0 Then
+        Err.Raise vbObjectError + 543, , _
+            "A 'tblCikkszam' tablabol hianyzo oszlop(ok):" & Left$(hiany, Len(hiany) - 1)
+    End If
+
+    ' Egyszerre olvassuk be (a kepletes oszlopok tarolt erteke, .Value)
+    v = lo.DataBodyRange.Value
+    ReDim torzs(1 To UBound(v, 1), 1 To 7)
+    nTorzs = 0
+
+    For r = 1 To UBound(v, 1)
+        k = Kulcs(Szoveg(v(r, cNum)))
+        If Len(k) = 0 Then GoTo KovSor
+
+        csop = UCase$(Szoveg(v(r, cCsop)))
+        If Len(csop) = 0 Then csop = Left$(k, 1)        ' tartalek: a cikkszam betuje
+        If csop = "R" Then GoTo KovSor                  ' R-szam: az LBL-bol jon
+
+        stat = Szoveg(v(r, cStat))
+        If InStr(1, NormB(stat), "ELTUNT", vbTextCompare) > 0 Then
+            nKihagyott = nKihagyott + 1
+            GoTo KovSor
+        End If
+        If dR.Exists(k) Then
+            nRUtkozes = nRUtkozes + 1
+            GoTo KovSor
+        End If
+        If dTorzs.Exists(k) Then
+            nDupla = nDupla + 1
+            GoTo KovSor
+        End If
+
+        nTorzs = nTorzs + 1
+        dTorzs.Add k, nTorzs
+        torzs(nTorzs, 1) = CikkszamFormatum(Szoveg(v(r, cNum)))
+        torzs(nTorzs, 2) = Szoveg(v(r, cNev))
+        torzs(nTorzs, 3) = Szoveg(v(r, cTip))
+        torzs(nTorzs, 4) = csop
+        If StrComp(stat, STAT_KIFUTOTT, vbTextCompare) = 0 Then
+            torzs(nTorzs, 5) = STAT_KIFUTOTT
+        Else
+            torzs(nTorzs, 5) = StatAktiv()
+        End If
+        torzs(nTorzs, 6) = BerendezesSzoveg(v(r, cBer))
+        torzs(nTorzs, 7) = ""
+        db = v(r, cEll)
+        If Not IsError(db) Then
+            If IsNumeric(db) Then
+                If CDbl(db) > 0 Then torzs(nTorzs, 7) = TorzsEllenorizendoSzoveg()
+            End If
+        End If
+KovSor:
+    Next r
+
+End Sub
+
+' Fajlvalaszto a cikkszamtorzshoz: az utoljara hasznalt fajlrol, ha nincs,
+' az LBL fajl mappajabol, vegul a 7.50 TEAM mappabol indul.
+Private Function TorzsFajlValasztas() As String
+
+    Dim kezdo As String, mappa As String
+
+    kezdo = UtvonalOlvasas(NEV_TORZS_UTVONAL)
+    If Len(kezdo) > 0 Then
+        If Not UtvonalLetezik(kezdo, vbNormal) Then kezdo = ""
+    End If
+    If Len(kezdo) = 0 Then
+        mappa = UtvonalOlvasas(NEV_UTVONAL)
+        If InStrRev(mappa, "\") > 0 Then
+            mappa = Left$(mappa, InStrRev(mappa, "\"))
+            If UtvonalLetezik(mappa, vbDirectory) Then kezdo = mappa
+        End If
+    End If
+    If Len(kezdo) = 0 Then
+        If UtvonalLetezik(TERMEKADATOK_MAPPA, vbDirectory) Then kezdo = TERMEKADATOK_MAPPA
+    End If
+
+    With Application.FileDialog(msoFileDialogFilePicker)
+        .Title = "Cikkszamtorzs (Autoblatt_Cikkszamtorzs) kivalasztasa"
+        .AllowMultiSelect = False
+        .Filters.Clear
+        .Filters.Add "Excel", "*.xlsx;*.xlsm"
+        If Len(kezdo) > 0 Then .InitialFileName = kezdo
+        If .Show = -1 Then TorzsFajlValasztas = .SelectedItems(1)
+    End With
+
 End Function
 
 '==========================================================================
@@ -475,15 +828,12 @@ Private Sub ListaKepletBeallitas(lo As ListObject)
     q = Chr(34)                                             ' egy literal idezojel
     sep = """ " & ChrW(183) & " """                        ' " . "
 
-    ' A cikkszam resz SZOKOZ NELKUL kerul a Lista-ba (SUBSTITUTE), hogy az
-    ' Excel legordulo sajat "gepeles kozbeni" szurese (ami elolrol, karakterrol
-    ' karakterre hasonlit) mukodjon akkor is, ha a felhasznalo szokoz nelkul
-    ' gepeli be a cikkszamot (pl. "a24463701" -> illeszkedik "A2446370100"-ra).
-    ' A nagy-/kisbetu kulonbseg mar eleve nem szamit az Excel legordulo
-    ' beepitett szuresenel. Kivalasztas utan a CikkszamValasztas mindig a
-    ' valodi (esetleg szokozos) PartNum erteket irja vissza A6-ba, tehat a
-    ' vegleges megjelenites nem valtozik.
-    f = "=SUBSTITUTE([@" & C_NUM & "]," & q & " " & q & "," & q & q & ")" & _
+    ' v9.15: a Lista a tarolt, egyseges format mutatja ("A177 637 0100"), a
+    ' 9.6-os SUBSTITUTE kivezetve. A gepeles kozbeni szures (M365) a szovegben
+    ' barhol keres, de a szokozon nem ugrik at: "637" es "637 0100" talal,
+    ' "6370100" nem. A nagy-/kisbetu nem szamit. Kivalasztas utan a
+    ' CikkszamValasztas az egyseges format irja A6-ba.
+    f = "=[@" & C_NUM & "]" & _
         "&IF([@" & C_NAME & "]=" & q & q & "," & q & q & "," & sep & "&[@" & C_NAME & "])" & _
         "&IF([@" & C_TYPE & "]=" & q & q & "," & q & q & "," & sep & "&[@" & C_TYPE & "])" & _
         "&IF([@" & C_STAT & "]=" & q & STAT_KIFUTOTT & q & "," & q & " (kifutott)" & q & "," & q & q & ")"
@@ -531,7 +881,7 @@ Private Sub ArticleRSorokCsereje(dNum As Object, sorrend As Collection, _
     For Each idx In sorrend
         t = dNum(idx)
         n = n + 1
-        uj(n, 1) = t(0)
+        uj(n, 1) = CikkszamFormatum(t(0))
         uj(n, 2) = t(1)
         uj(n, 3) = t(2)
         uj(n, 4) = "R"
@@ -541,11 +891,57 @@ Private Sub ArticleRSorokCsereje(dNum As Object, sorrend As Collection, _
             uj(n, 5) = STAT_KIFUTOTT: nKifutott = nKifutott + 1
         End If
         uj(n, 6) = t(4)          ' Berendezes: tetelenkent, a sajat tablabol
-        uj(n, 7) = ""
+        If CikkszamErvenyes(t(0)) Then uj(n, 7) = "" Else uj(n, 7) = NemSzabvanyosSzoveg()
     Next idx
     nUj = n
 
     ArticleIras lo, oszlopok, uj, nUj, nRegi
+
+End Sub
+
+' v9.16: az ArticleRSorokCsereje tukorkepe: az R-sorok valtozatlanok, a
+' nem R (A/N) sorok helyere a cikkszamtorzs sorai kerulnek. A torzs tomb
+' oszlopsorrendje azonos az oszlopok tombevel.
+Private Sub ArticleNemRSorokCsereje(torzs() As Variant, ByVal nTorzs As Long)
+
+    Dim lo As ListObject
+    Dim oszlopok As Variant, regi() As Variant, uj() As Variant
+    Dim nCol As Long, nRegi As Long, n As Long
+    Dim i As Long, j As Long
+    Dim vSrc As Variant
+
+    Set lo = ThisWorkbook.Worksheets(SH_PARTS).ListObjects(LO_ARTICLE)
+    oszlopok = Array(C_NUM, C_NAME, C_TYPE, C_SRC, C_STAT, C_PROD, C_NOTE)
+    nCol = UBound(oszlopok) + 1
+
+    ' Regi adatok oszloponkent (a sorrend a lapon mindegy)
+    nRegi = 0
+    If Not lo.DataBodyRange Is Nothing Then nRegi = lo.DataBodyRange.Rows.Count
+    ReDim regi(1 To nCol)
+    For j = 1 To nCol
+        If nRegi > 0 Then regi(j) = OszlopTomb(lo, CStr(oszlopok(j - 1)))
+    Next j
+    vSrc = regi(4)
+
+    ' Uj tomb: megtartott R-sorok + a torzs A/N-sorai
+    ReDim uj(1 To nRegi + nTorzs, 1 To nCol)
+    n = 0
+    For i = 1 To nRegi
+        If StrComp(Szoveg(vSrc(i, 1)), "R", vbTextCompare) = 0 Then
+            n = n + 1
+            For j = 1 To nCol
+                uj(n, j) = regi(j)(i, 1)
+            Next j
+        End If
+    Next i
+    For i = 1 To nTorzs
+        n = n + 1
+        For j = 1 To nCol
+            uj(n, j) = torzs(i, j)
+        Next j
+    Next i
+
+    ArticleIras lo, oszlopok, uj, n, nRegi
 
 End Sub
 
@@ -584,28 +980,34 @@ End Sub
 '==========================================================================
 ' 3. Article tisztitasa (egyszeri, Alt+F8 -> ArticleTisztitas)
 '--------------------------------------------------------------------------
-' - A/N cikkszam szokoz nelkuli alakra ("A 177 611 13 00" -> A1776111300)
-' - duplikatum: az elso marad; eltero megnevezesnel a tobbi az Ellenorzes
-'   oszlopba kerul, hogy kezzel el lehessen donteni
-' - hianyzo megnevezes jelolese az Ellenorzes oszlopban
-' Az R-sorokhoz nem nyul (azokat a frissites kezeli).
+' - minden cikkszam (R is) egyseges formara: betu + 3-3-4
+'   ("A 177 611 13 00" -> "A177 611 1300"), az N-szam valtozatlan
+' - duplikatum (Kulcs() szerint): az elso marad; eltero megnevezesnel a
+'   tobbi az Ellenorzes oszlopba kerul, hogy kezzel el lehessen donteni
+' - hianyzo megnevezes es nem szabvanyos cikkszam jelolese az Ellenorzes
+'   oszlopban (az N-szam nem kap jelolest)
 '==========================================================================
 Public Sub ArticleTisztitas()
+
+    Const MAX_UTKOZO_LISTA As Long = 15
 
     Dim lo As ListObject
     Dim oszlopok As Variant, regi() As Variant, uj() As Variant
     Dim nCol As Long, nRegi As Long, n As Long, i As Long, j As Long
-    Dim d As Object
-    Dim k As String, nev As String, hely As Long
+    Dim d As Object, dUtkozo As Object, kUtkozo As Variant
+    Dim k As String, nev As String, eredeti As String, jegyzet As String, hely As Long
     Dim nForma As Long, nAzonos As Long, nUtkozo As Long, nUres As Long
-    Dim uzenet As String
+    Dim nNemSzabvanyos As Long, nListazott As Long
+    Dim uzenet As String, lepes As String
 
     On Error GoTo Hiba
 
     Application.ScreenUpdating = False
     Application.EnableEvents = False
+    lepes = "Article oszlopok ellenorzese"
     ArticleOszlopokBiztositasa
 
+    lepes = "Article beolvasasa"
     Set lo = ThisWorkbook.Worksheets(SH_PARTS).ListObjects(LO_ARTICLE)
     If lo.DataBodyRange Is Nothing Then GoTo Vege
     nRegi = lo.DataBodyRange.Rows.Count
@@ -617,18 +1019,19 @@ Public Sub ArticleTisztitas()
         regi(j) = OszlopTomb(lo, CStr(oszlopok(j - 1)))
     Next j
 
+    lepes = "egysegesites es duplikatumok"
     Set d = CreateObject("Scripting.Dictionary")
     d.CompareMode = vbTextCompare
+    Set dUtkozo = CreateObject("Scripting.Dictionary")
+    dUtkozo.CompareMode = vbTextCompare
     ReDim uj(1 To nRegi, 1 To nCol)
     n = 0
 
     For i = 1 To nRegi
-        If StrComp(Szoveg(regi(4)(i, 1)), "R", vbTextCompare) = 0 Then
-            k = "R|" & Kulcs(Szoveg(regi(1)(i, 1)))       ' R-sor: nem bantjuk
-        Else
-            k = Kulcs(Szoveg(regi(1)(i, 1)))
-            If k <> Szoveg(regi(1)(i, 1)) Then nForma = nForma + 1
-        End If
+        ' v9.15: minden sor (R is) egyseges formara, a kulcs mindenhol Kulcs()
+        eredeti = Szoveg(regi(1)(i, 1))
+        k = Kulcs(eredeti)
+        If StrComp(CikkszamFormatum(eredeti), eredeti, vbBinaryCompare) <> 0 Then nForma = nForma + 1
         nev = Szoveg(regi(2)(i, 1))
 
         If d.Exists(k) Then
@@ -640,9 +1043,10 @@ Public Sub ArticleTisztitas()
                 nAzonos = nAzonos + 1
             Else
                 nUtkozo = nUtkozo + 1
+                If Not dUtkozo.Exists(k) Then dUtkozo.Add k, hely
                 If InStr(1, Szoveg(uj(hely, 7)), nev, vbTextCompare) = 0 Then
                     uj(hely, 7) = Szoveg(uj(hely, 7)) & _
-                        IIf(Len(Szoveg(uj(hely, 7))) > 0, "; ", "Mas megnevezes is: ") & nev
+                        IIf(Len(Szoveg(uj(hely, 7))) > 0, "; ", MasMegnevezesSzoveg()) & nev
                 End If
             End If
         Else
@@ -651,29 +1055,55 @@ Public Sub ArticleTisztitas()
             For j = 1 To nCol
                 uj(n, j) = regi(j)(i, 1)
             Next j
-            If Left$(k, 2) <> "R|" Then uj(n, 1) = k
+            uj(n, 1) = CikkszamFormatum(eredeti)
         End If
     Next i
 
+    lepes = "jelolesek"
     For i = 1 To n
         If Len(Szoveg(uj(i, 2))) = 0 And Len(Szoveg(uj(i, 7))) = 0 Then
             uj(i, 7) = "Nincs megnevezes": nUres = nUres + 1
         End If
+        ' v9.15: nem szabvanyos cikkszam jelolese (az N-szam nem kap jelolest)
+        If Not CikkszamErvenyes(Szoveg(uj(i, 1))) And Not (Kulcs(Szoveg(uj(i, 1))) Like "N#*") Then
+            nNemSzabvanyos = nNemSzabvanyos + 1
+            jegyzet = Szoveg(uj(i, 7))
+            If InStr(1, Ekezetlen(jegyzet), "Nem szabvanyos cikkszam", vbTextCompare) = 0 Then
+                uj(i, 7) = jegyzet & IIf(Len(jegyzet) > 0, "; ", "") & NemSzabvanyosSzoveg()
+            End If
+        End If
     Next i
 
+    lepes = "elonezet"
     Application.ScreenUpdating = True
     uzenet = "Article tisztitas - elonezet" & vbLf & vbLf & _
              "Sorok most: " & nRegi & vbLf & _
              "Sorok utana: " & n & vbLf & vbLf & _
-             "Szokoz nelkuli alakra hozva: " & nForma & vbLf & _
+             "Egyseges formara hozva (A177 637 0100): " & nForma & vbLf & _
              "Torolt duplikatum (azonos megnevezes): " & nAzonos & vbLf & _
              "Utkozo megnevezes (Ellenorzes oszlopba irva): " & nUtkozo & vbLf & _
-             "Hianyzo megnevezes (jelolve): " & nUres & vbLf & vbLf & _
-             "Vegrehajtsam? (Elotte erdemes elmenteni egy masolatot.)"
+             "Hianyzo megnevezes (jelolve): " & nUres & vbLf & _
+             "Nem szabvanyos cikkszam (jelolve): " & nNemSzabvanyos & vbLf
+    ' Csak a cikkszamok (a MsgBox kb. 1024 karakter utan levag)
+    If dUtkozo.Count > 0 Then
+        uzenet = uzenet & vbLf & "Utkozo megnevezesu cikkszamok:" & vbLf
+        For Each kUtkozo In dUtkozo.Keys
+            If nListazott >= MAX_UTKOZO_LISTA Then
+                uzenet = uzenet & "  " & ChrW(8230) & " " & ChrW(233) & "s tov" & ChrW(225) & "bbi " & _
+                         (dUtkozo.Count - MAX_UTKOZO_LISTA) & vbLf
+                Exit For
+            End If
+            uzenet = uzenet & "  " & Szoveg(uj(dUtkozo(kUtkozo), 1)) & vbLf
+            nListazott = nListazott + 1
+        Next kUtkozo
+    End If
+    uzenet = uzenet & vbLf & "Vegrehajtsam? (Elotte erdemes elmenteni egy masolatot.)"
     If MsgBox(uzenet, vbQuestion + vbYesNo + vbDefaultButton2, "Article tisztitas") <> vbYes Then GoTo Vege
     Application.ScreenUpdating = False
 
+    lepes = "Article ujrairasa"
     ArticleIras lo, oszlopok, uj, n, nRegi
+    lepes = "A6 lista ujraepitese"
     A6ListaFrissites
 
 Vege:
@@ -684,7 +1114,8 @@ Vege:
 Hiba:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
-    MsgBox "A tisztitas megszakadt: " & Err.Description, vbExclamation, "Article tisztitas"
+    MsgBox "A tisztitas megszakadt [" & lepes & "]: " & Err.Description & _
+           " (" & Err.Number & ")", vbExclamation, "Article tisztitas"
 End Sub
 
 '==========================================================================
@@ -720,8 +1151,8 @@ Public Sub A6ListaFrissites(Optional ws As Worksheet = Nothing)
     ' A "barhol keres" (pl. "637" vagy "sitenwand" begepelese) az A6 melletti
     ' legordulo NYIL-ra kattintva megjeleno, Excel sajat beepitett kereso-
     ' mezojevel mukodik - ugyanaz a legordulo, csak a nyillal nyitva meg
-    ' egy keresosav is van benne. Kozvetlen begepeleskor (nyil nelkul) az
-    ' egyezes a cikkszam ELEJETOL szur (szokoz/nagybetu nem szamit, l. 9.6).
+    ' egy keresosav is van benne. A lista a tarolt, egyseges cikkszam-format
+    ' mutatja (v9.15), a szuresnel a szokoz szamit (l. ListaKepletBeallitas).
 
     vList = OszlopTomb(lo, C_LIST)
     vSrc = OszlopTomb(lo, C_SRC)
@@ -784,7 +1215,7 @@ Public Sub CikkszamValasztas(ws As Worksheet)
         Exit Sub
     End If
 
-    ' "R 244 637 0100 . BPL SEITENWAND LI . X244/248 (kifutott)" -> szam
+    ' "R244 637 0100 . BPL SEITENWAND LI . X244/248 (kifutott)" -> szam
     sep = " " & ChrW(183) & " "
     p = InStr(1, s, sep)
     If p > 0 Then szam = Left$(s, p - 1) Else szam = s
@@ -792,8 +1223,8 @@ Public Sub CikkszamValasztas(ws As Worksheet)
     szam = Trim$(szam)
 
     If Not CikkszamBeallitasa(ws, Kulcs(szam)) Then
-        ' Nincs a torzsben: a szam marad, megnevezes ures
-        ws.Range("A6").Value = szam
+        ' Nincs a torzsben: a szam marad (egyseges formaban), megnevezes ures
+        ws.Range("A6").Value = CikkszamFormatum(szam)
         ws.Range("C6").Value = ""
     End If
 
@@ -820,29 +1251,33 @@ Public Function CikkszamBeallitasa(ws As Worksheet, ByVal k As String) As Boolea
 
     For i = 1 To UBound(vNum, 1)
         If Kulcs(Szoveg(vNum(i, 1))) = k Then
-            ws.Range("A6").Value = Szoveg(vNum(i, 1))
+            ws.Range("A6").Value = CikkszamFormatum(Szoveg(vNum(i, 1)))
             ws.Range("C6").Value = Szoveg(vName(i, 1))
-            If vanTipus Then
-                If Len(Szoveg(vType(i, 1))) > 0 Then ws.Range("G6").Value = Szoveg(vType(i, 1))
-            End If
+            ' v9.16: G6 mindig a tetel tipusa; ha az ures, a G6 is kiurul
+            ' (kulonben egy korabbi tipus, pl. W177 maradna a lapon)
+            If vanTipus Then ws.Range("G6").Value = Szoveg(vType(i, 1))
 
             ' v9.3: a gyarto berendezes (H6) automatikus at-/kitoltese a tetel
             ' sajat Berendezes ertekebol, ha az elter a jelenlegi H6-tol
-            ' v9.12: ha a cikkszam A-val kezdodik, a berendezes mindig 7.41
-            ' (fuggetlenul attol, hogy az Article tablaban mi szerepel)
-            If Left$(Trim$(Szoveg(vNum(i, 1))), 1) = "A" Then
-                ujBer = "7.41"
-            ElseIf vanBer Then
+            ' v9.16: a 9.12-es "A-szam = mindig 7.41" szabaly KIVEZETVE: minden
+            ' cikkszamnal a tetel sajat Berendezes erteke szamit. Ha ures, a
+            ' H6_URES_HA_NINCS_BERENDEZES dont: True = H6 kiurul, False = marad.
+            If vanBer Then
                 ujBer = Trim$(Replace(Szoveg(vBer(i, 1)), ",", "."))
             Else
                 ujBer = ""
             End If
 
+            regiBer = Trim$(Replace(Szoveg(ws.Range("H6").Value), ",", "."))
             If Len(ujBer) > 0 Then
-                regiBer = Trim$(Replace(Szoveg(ws.Range("H6").Value), ",", "."))
                 If StrComp(regiBer, ujBer, vbTextCompare) <> 0 Then
                     ws.Range("H6").Value = ujBer
                     HibafeltarasKitoltes ws
+                End If
+            ElseIf H6_URES_HA_NINCS_BERENDEZES Then
+                If Len(regiBer) > 0 Then
+                    ws.Range("H6").Value = ""
+                    HibafeltarasKitoltes ws          ' a kerdesblokk elrejtodik
                 End If
             End If
 
@@ -921,18 +1356,60 @@ Public Function Kulcs(ByVal s As String) As String
     Kulcs = UCase$(s)
 End Function
 
-Private Function RSzamFormatum(ByVal s As String) As String
+'--------------------------------------------------------------------------
+' v9.15: egyseges cikkszam-formatum: betu + 3-3-4, pl. "A177 637 0100".
+' Barmilyen bevitelt elfogad (szokoz, NBSP, tab, kisbetu nem szamit).
+' Ami nem illik a mintara (pl. N-szam), valtozatlanul (Trim) marad.
+'--------------------------------------------------------------------------
+Public Function CikkszamFormatum(ByVal s As String) As String
     Dim k As String
     k = Kulcs(s)
-    If k Like "R##########" Then
-        RSzamFormatum = "R " & Mid$(k, 2, 3) & " " & Mid$(k, 5, 3) & " " & Mid$(k, 8, 4)
+    If k Like "[AR]##########" Then
+        CikkszamFormatum = Left$(k, 4) & " " & Mid$(k, 5, 3) & " " & Mid$(k, 8, 4)
     Else
-        RSzamFormatum = Trim$(s)
+        CikkszamFormatum = Trim$(s)
     End If
+End Function
+
+' True, ha a cikkszam a szabvanyos A/R mintara illik
+Public Function CikkszamErvenyes(ByVal s As String) As Boolean
+    CikkszamErvenyes = (Kulcs(s) Like "[AR]##########")
 End Function
 
 Private Function StatAktiv() As String
     StatAktiv = "Akt" & ChrW(237) & "v"
+End Function
+
+' "Nem szabvanyos cikkszam", ekezetekkel (Ellenorzes oszlop)
+Private Function NemSzabvanyosSzoveg() As String
+    NemSzabvanyosSzoveg = "Nem szabv" & ChrW(225) & "nyos cikksz" & ChrW(225) & "m"
+End Function
+
+' "Mas megnevezes is: ", ekezetekkel (Ellenorzes oszlop)
+Private Function MasMegnevezesSzoveg() As String
+    MasMegnevezesSzoveg = "M" & ChrW(225) & "s megnevez" & ChrW(233) & "s is: "
+End Function
+
+' "Ellenorizendo (cikkszamtorzs)", ekezetekkel (Ellenorzes oszlop), v9.16
+Private Function TorzsEllenorizendoSzoveg() As String
+    TorzsEllenorizendoSzoveg = "Ellen" & ChrW(337) & "rizend" & ChrW(337) & _
+                               " (cikksz" & ChrW(225) & "mt" & ChrW(246) & "rzs)"
+End Function
+
+' "  ... es tovabbi N" sor az elonezeti listak vegere, v9.16
+Private Function TovabbiSzoveg(ByVal db As Long) As String
+    TovabbiSzoveg = "  " & ChrW(8230) & " " & ChrW(233) & "s tov" & ChrW(225) & "bbi " & db & vbLf
+End Function
+
+' Berendezes szovegkent, tizedesponttal, v9.16: a szam 7.5 -> "7.50",
+' a szoveg "7,41" -> "7.41" (a helyi tizedesvesszotol fuggetlenul)
+Private Function BerendezesSzoveg(ByVal v As Variant) As String
+    Select Case VarType(v)
+        Case vbDouble, vbSingle, vbCurrency, vbDecimal, vbInteger, vbLong
+            BerendezesSzoveg = Replace(Format$(v, "0.00"), ",", ".")
+        Case Else
+            BerendezesSzoveg = Trim$(Replace(Szoveg(v), ",", "."))
+    End Select
 End Function
 
 ' Az E4 eredeti felirata ("Preseles/Abpressung"), ekezetekkel
