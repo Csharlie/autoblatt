@@ -1,9 +1,9 @@
 Attribute VB_Name = "modFotolap"
-' Keszitette es karbantartja : Sardy Peter (PESARDY)
-' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
+' Fejlesztes es karbantartas : Sardy Peter (PESARDY)
+' Mercedes-Benz Manufacturing Hungary Kft. - Kecskemet, PW
 ' Verzio 9.2 - 2026.09.22.
 '
-' A kod Sardy Peter munkaja. Modositas elott egyeztess vele.
+' Belso fejlesztes. Modositas kizarolag a karbantartoval egyeztetve.
 
 Option Explicit
 Option Compare Text
