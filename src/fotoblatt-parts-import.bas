@@ -1,7 +1,22 @@
 Attribute VB_Name = "modTermekadatok"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.16 - 2026.10.08.
+' Verzio 9.18 - 2026.10.14.
+'   9.18: verzio-igazitas a modFotolap 9.18-hoz, ebben a modulban nincs
+'        kodvaltozas.
+'   9.17: rendrakas, uj funkcio nelkul. Ismeretlen vagy torolt cikkszamnal
+'        a C6, G6 es H6 is kiurul (TetelAdatokUritese; a H6 kezelese egy
+'        helyen: BerendezesBeallitas). Az E4/E6 logika egy helyen:
+'        AnyagFeliratBeallitas (a lapkod is ezt hivja). A cikkszam-valasztas
+'        nem epiti ujra az A6 listat; lapra lepeskor csak akkor epul ujra, ha
+'        az Article valtozott (A6ListaAlairas / A6ListaElavult).
+'        Uj: hibakep-legordulo a Hibafeltaras cimsorban (a "Hibakep /
+'        Fehlerbild" felirat melletti cella), forrasa a Data lap tblHibakep
+'        tablaja (HibakepLista nev). A HibakepekFrissitese a Hibamegnevezesek
+'        fajl magyar neveit (Bezeichnung HU) veszi at, csak hozzaad, nem torol.
+'        Forras megnyitasa egy helyen (ForrasMegnyitasa): ha egy azonos nevu
+'        masik fajl mar nyitva van, erthetoen megall (korabban felrevezeto
+'        "nem talalhato tabla" hibat adott).
 '   9.16: uj forras az A- es N-szamokhoz: Autoblatt_Cikkszamtorzs.xlsx /
 '        tblCikkszam, uj makro: CikkszamtorzsFrissitese (elonezettel; az
 '        Article nem R sorait lecsereli, az R-sorok valtozatlanok). A
@@ -103,7 +118,9 @@ Option Compare Text
 ' (Termekszam/Cikkszam, Termeknev/Megnevezes, Tipus, Berendezes, Statusz).
 '
 ' Az A6 legordulo forrasa az A6Lista nev (Parts!J oszlop), ezt az
-' A6ListaFrissites epiti ujra. A tartalma nem fugg H6-tol es G6-tol (v9.5):
+' A6ListaFrissites epiti ujra: importkor, tisztitaskor, beallitaskor, kezzel
+' (A6ListaUjraepites), es lapra lepeskor, ha az Article valtozott (v9.17).
+' A tartalma nem fugg H6-tol es G6-tol (v9.5):
 '   MINDIG -> az osszes cikkszam (R aktiv, R kifutott, A), fuggetlenul
 '             H6-tol ES G6-tol is (nincs szures egyik alapjan sem)
 '
@@ -144,6 +161,17 @@ Private Const T_TERMEK As String = "tblTermek"
 Private Const NEV_TORZS_UTVONAL As String = "CikkszamtorzsUtvonal"   ' rejtett nev
 Private Const T_CIKKSZAM As String = "tblCikkszam"
 
+'--- Hibakepek (v9.17) ----------------------------------------------------
+Public Const NEV_HIBAKEPLISTA As String = "HibakepLista"          ' legordulo forrasa
+Private Const T_HIBAKEP As String = "tblHibakep"                  ' Data lap
+Private Const C_HIBAKEP As String = "Hibakep"
+Private Const NEV_HIBAKEP_UTVONAL As String = "HibakepUtvonal"    ' rejtett nev
+
+'--- Allapot (v9.17) ------------------------------------------------------
+' Az Article alairasa az utolso A6-lista epitesekor (l. A6ListaAlairas).
+' VBA-reset utan ures, ilyenkor a kovetkezo lapra lepes egyszer ujraepit.
+Private mA6ListaAlairas As String
+
 '==========================================================================
 ' 1. Termekadatok frissitese (Alt+F8 -> TermekadatokFrissitese)
 '--------------------------------------------------------------------------
@@ -174,12 +202,7 @@ Public Sub TermekadatokFrissitese()
 
     '--- Forras megnyitasa (ha mar nyitva van, azt hasznaljuk) ------------
     lepes = "forrasfajl megnyitasa"
-    Set src = NyitottMunkafuzet(fajl)
-    If src Is Nothing Then
-        Set src = Workbooks.Open(Filename:=fajl, ReadOnly:=True, _
-                                 UpdateLinks:=0, AddToMru:=False)
-        sajatNyitas = True
-    End If
+    Set src = ForrasMegnyitasa(fajl, sajatNyitas)       ' v9.17
 
     lepes = "tblTermek beolvasasa"
     Set dNum = CreateObject("Scripting.Dictionary")
@@ -454,6 +477,44 @@ Private Function NyitottMunkafuzet(ByVal fajl As String) As Workbook
 End Function
 
 ' v9.16: a rejtett nev parameter (alapertelmezes: TermekadatokUtvonal)
+'--------------------------------------------------------------------------
+' v9.17: forrasfajl megnyitasa CSAK OLVASASRA, mindharom import szamara.
+'   - ha pontosan ez a fajl mar nyitva van, azt hasznaljuk (sajatNyitas = False,
+'     a vegen nem zarjuk be)
+'   - ha egy AZONOS NEVU, de mas helyen levo fajl van nyitva (pl. egy masolat a
+'     Letoltesek mappaban, vagy a OneDrive-rol URL-kent megnyitott peldany),
+'     megallunk: az Excel ket azonos nevu munkafuzetet nem kezel, es az Open
+'     ilyenkor hiba nelkul Nothing-ot adhat (ebbol lett korabban a felrevezeto
+'     "nem talalhato tabla" uzenet)
+'   - ha az Open megsem ad munkafuzetet, szinten erthetoen megallunk
+'--------------------------------------------------------------------------
+Private Function ForrasMegnyitasa(ByVal fajl As String, ByRef sajatNyitas As Boolean) As Workbook
+
+    Dim wb As Workbook, nev As String
+
+    sajatNyitas = False
+    Set wb = NyitottMunkafuzet(fajl)
+    If wb Is Nothing Then
+        nev = Mid$(fajl, InStrRev(fajl, "\") + 1)
+        For Each wb In Application.Workbooks
+            If StrComp(wb.Name, nev, vbTextCompare) = 0 Then
+                Err.Raise vbObjectError + 560, , _
+                    "Mar nyitva van egy azonos nevu fajl:" & vbLf & wb.FullName & vbLf & _
+                    "Zard be, es inditsd ujra a frissitest."
+            End If
+        Next wb
+
+        Set wb = Workbooks.Open(Filename:=fajl, ReadOnly:=True, _
+                                UpdateLinks:=0, AddToMru:=False)
+        If wb Is Nothing Then
+            Err.Raise vbObjectError + 561, , "A fajl nem nyithato meg: " & fajl
+        End If
+        sajatNyitas = True
+    End If
+    Set ForrasMegnyitasa = wb
+
+End Function
+
 Private Sub UtvonalMentes(ByVal fajl As String, Optional ByVal nev As String = NEV_UTVONAL)
     On Error Resume Next
     ThisWorkbook.Names(nev).Delete
@@ -537,12 +598,7 @@ Public Sub CikkszamtorzsFrissitese()
 
     '--- Forras megnyitasa (ha mar nyitva van, azt hasznaljuk) ------------
     lepes = "forrasfajl megnyitasa"
-    Set src = NyitottMunkafuzet(fajl)
-    If src Is Nothing Then
-        Set src = Workbooks.Open(Filename:=fajl, ReadOnly:=True, _
-                                 UpdateLinks:=0, AddToMru:=False)
-        sajatNyitas = True
-    End If
+    Set src = ForrasMegnyitasa(fajl, sajatNyitas)       ' v9.17
 
     lepes = "tblCikkszam beolvasasa"
     Set dTorzs = CreateObject("Scripting.Dictionary")
@@ -676,7 +732,8 @@ Private Sub TorzsTablaBeolvasasa(src As Workbook, dR As Object, dTorzs As Object
     Set lo = TablaBarmelyLapon(src, T_CIKKSZAM)
     If lo Is Nothing Then
         Err.Raise vbObjectError + 540, , _
-            "A fajlban nem talalhato 'tblCikkszam' tabla. Az Autoblatt_Cikkszamtorzs fajlt valasztottad?"
+            "A fajlban (" & src.Name & ") nem talalhato 'tblCikkszam' tabla. " & _
+            "Az Autoblatt_Cikkszamtorzs fajlt valasztottad?"
     End If
     If lo.DataBodyRange Is Nothing Then
         Err.Raise vbObjectError + 541, , "A 'tblCikkszam' tabla ures."
@@ -1199,7 +1256,37 @@ Public Sub A6ListaFrissites(Optional ws As Worksheet = Nothing)
     ThisWorkbook.Names.Add Name:=NEV_A6LISTA, _
         RefersTo:="='" & SH_PARTS & "'!$J$2:$J$" & (n + 1)
 
+    ' v9.17: ehhez az allapothoz kepest nezi a lapra lepes, kell-e ujraepites
+    mA6ListaAlairas = A6ListaAlairas()
+
 End Sub
+
+'--------------------------------------------------------------------------
+' v9.17: az Article "alairasa": sorszam | a Lista oszlop osszhossza.
+' Nativ Excel-szamitas (gyors), a Parts lap Evaluate-jevel, hogy ne fuggjon
+' az aktiv munkafuzettol. Hiba (pl. ures tabla, hibaertek a Lista-ban)
+' eseten ures sztring - ilyenkor a hivo inkabb ujraepit.
+' Korlat: az azonos hosszusagu atirast (pl. "LI" -> "RE") nem eszleli.
+'--------------------------------------------------------------------------
+Public Function A6ListaAlairas() As String
+    Dim v As Variant
+    On Error GoTo Hiba
+    v = ThisWorkbook.Worksheets(SH_PARTS).Evaluate( _
+            "ROWS(" & LO_ARTICLE & ")&""|""&SUMPRODUCT(LEN(" & LO_ARTICLE & "[" & C_LIST & "]))")
+    If IsError(v) Then Exit Function
+    A6ListaAlairas = CStr(v)
+    Exit Function
+Hiba:
+    A6ListaAlairas = ""
+End Function
+
+' v9.17: True, ha az A6 lista ujraepitese szukseges (az Article valtozott
+' az utolso epites ota, az alairas nem kepezheto, vagy VBA-reset volt).
+Public Function A6ListaElavult() As Boolean
+    Dim alairas As String
+    alairas = A6ListaAlairas()
+    A6ListaElavult = (Len(alairas) = 0) Or (alairas <> mA6ListaAlairas)
+End Function
 
 '==========================================================================
 ' 5. A6 valasztas -> A6 = cikkszam, C6 = megnevezes, G6 = tipus
@@ -1211,7 +1298,7 @@ Public Sub CikkszamValasztas(ws As Worksheet)
 
     s = Szoveg(ws.Range("A6").Value)
     If Len(s) = 0 Then
-        ws.Range("C6").Value = ""
+        TetelAdatokUritese ws               ' v9.17: C6, G6 es H6 is
         Exit Sub
     End If
 
@@ -1223,9 +1310,10 @@ Public Sub CikkszamValasztas(ws As Worksheet)
     szam = Trim$(szam)
 
     If Not CikkszamBeallitasa(ws, Kulcs(szam)) Then
-        ' Nincs a torzsben: a szam marad (egyseges formaban), megnevezes ures
+        ' Nincs a torzsben: a szam marad (egyseges formaban), a tetel
+        ' adatai (C6, G6, H6) kiurulnek - v9.17
         ws.Range("A6").Value = CikkszamFormatum(szam)
-        ws.Range("C6").Value = ""
+        TetelAdatokUritese ws
     End If
 
 End Sub
@@ -1238,7 +1326,7 @@ Public Function CikkszamBeallitasa(ws As Worksheet, ByVal k As String) As Boolea
     Dim i As Long
     Dim vNum As Variant, vName As Variant, vType As Variant, vBer As Variant
     Dim vanTipus As Boolean, vanBer As Boolean
-    Dim ujBer As String, regiBer As String
+    Dim ujBer As String
 
     Set lo = ThisWorkbook.Worksheets(SH_PARTS).ListObjects(LO_ARTICLE)
     If lo.DataBodyRange Is Nothing Then Exit Function
@@ -1262,44 +1350,80 @@ Public Function CikkszamBeallitasa(ws As Worksheet, ByVal k As String) As Boolea
             ' v9.16: a 9.12-es "A-szam = mindig 7.41" szabaly KIVEZETVE: minden
             ' cikkszamnal a tetel sajat Berendezes erteke szamit. Ha ures, a
             ' H6_URES_HA_NINCS_BERENDEZES dont: True = H6 kiurul, False = marad.
+            ' v9.17: a H6 kezelese egy helyen, a BerendezesBeallitas-ban.
             If vanBer Then
-                ujBer = Trim$(Replace(Szoveg(vBer(i, 1)), ",", "."))
+                ujBer = Szoveg(vBer(i, 1))
             Else
                 ujBer = ""
             End If
+            BerendezesBeallitas ws, ujBer
 
-            regiBer = Trim$(Replace(Szoveg(ws.Range("H6").Value), ",", "."))
-            If Len(ujBer) > 0 Then
-                If StrComp(regiBer, ujBer, vbTextCompare) <> 0 Then
-                    ws.Range("H6").Value = ujBer
-                    HibafeltarasKitoltes ws
-                End If
-            ElseIf H6_URES_HA_NINCS_BERENDEZES Then
-                If Len(regiBer) > 0 Then
-                    ws.Range("H6").Value = ""
-                    HibafeltarasKitoltes ws          ' a kerdesblokk elrejtodik
-                End If
-            End If
+            ' v9.13: R-cikkszamnal E4/E6 = Alapanyag/Material - Platine;
+            ' v9.17: a logika egy helyen, az AnyagFeliratBeallitas-ban
+            AnyagFeliratBeallitas ws, Szoveg(vNum(i, 1))
 
-            ' v9.13: R-cikkszamnal E4/E6 = Alapanyag/Material - Platine,
-            ' minden mas esetben az E4 eredeti felirata all vissza
-            If Left$(Trim$(Szoveg(vNum(i, 1))), 1) = "R" Then
-                ws.Range("E4").Value = "Alapanyag/Material"
-                ws.Range("E6").Value = "Platine"
-            Else
-                ws.Range("E4").Value = PreselesFeliratEredeti()
-                If StrComp(Szoveg(ws.Range("E6").Value), "Platine", vbTextCompare) = 0 Then
-                    ws.Range("E6").Value = ""
-                End If
-            End If
-
-            A6ListaFrissites ws
+            ' v9.17: nincs A6ListaFrissites - a valasztas nem valtoztatja a listat
             CikkszamBeallitasa = True
             Exit Function
         End If
     Next i
 
 End Function
+
+' v9.17: ismeretlen vagy torolt cikkszam - a korabbi tetel adatai ne
+' maradjanak a lapon: C6 es G6 kiurul, a H6 a BerendezesBeallitas szerint
+' (H6_URES_HA_NINCS_BERENDEZES = True: kiurul, a kerdesblokk elrejtodik).
+Private Sub TetelAdatokUritese(ws As Worksheet)
+    ws.Range("C6").Value = ""
+    ws.Range("G6").Value = ""
+    BerendezesBeallitas ws, ""
+End Sub
+
+' v9.17: a H6 (gyarto berendezes) beallitasa, egy helyen a
+' CikkszamBeallitasa es a TetelAdatokUritese szamara.
+'   ujBer nem ures: ha elter a H6-tol, beirjuk, es a kerdesblokk ujratoltodik
+'   ujBer ures:     H6_URES_HA_NINCS_BERENDEZES = True -> a H6 kiurul (ha nem
+'                   volt ures), a kerdesblokk elrejtodik; False -> a H6 marad
+Private Sub BerendezesBeallitas(ws As Worksheet, ByVal ujBer As String)
+
+    Dim regiBer As String
+
+    ujBer = Trim$(Replace(ujBer, ",", "."))
+    regiBer = Trim$(Replace(Szoveg(ws.Range("H6").Value), ",", "."))
+
+    If Len(ujBer) > 0 Then
+        If StrComp(regiBer, ujBer, vbTextCompare) <> 0 Then
+            ws.Range("H6").Value = ujBer
+            HibafeltarasKitoltes ws
+        End If
+    ElseIf H6_URES_HA_NINCS_BERENDEZES Then
+        If Len(regiBer) > 0 Then
+            ws.Range("H6").Value = ""
+            HibafeltarasKitoltes ws          ' a kerdesblokk elrejtodik
+        End If
+    End If
+
+End Sub
+
+'--------------------------------------------------------------------------
+' v9.17: E4/E6 a cikkszam elso betuje alapjan. Ez az EGYETLEN hely, ahol ez
+' a logika el: a lapkod (AnyagFelirat) es a CikkszamBeallitasa is ezt hivja.
+'   R-szam:     E4 = "Alapanyag/Material", E6 = "Platine"
+'   minden mas: E4 = eredeti felirat ("Preseles/Abpressung", ekezetekkel),
+'               az E6-bol az automatikus "Platine" torlodik (a felhasznalo
+'               sajat E6 bejegyzeset nem bantjuk)
+'--------------------------------------------------------------------------
+Public Sub AnyagFeliratBeallitas(ws As Worksheet, ByVal cikkszam As String)
+    If UCase$(Left$(Trim$(cikkszam), 1)) = "R" Then
+        ws.Range("E4").Value = "Alapanyag/Material"
+        ws.Range("E6").Value = "Platine"
+    Else
+        ws.Range("E4").Value = PreselesFeliratEredeti()
+        If StrComp(Szoveg(ws.Range("E6").Value), "Platine", vbTextCompare) = 0 Then
+            ws.Range("E6").Value = ""
+        End If
+    End If
+End Sub
 
 '==========================================================================
 ' 6. Tipuskodok (Data!Type)
@@ -1344,6 +1468,267 @@ Public Function TipusKodok92() As String
 
     If TipusBiztositas("H248") Then ki = ki & "- H248 felveve" & vbLf
     TipusKodok92 = ki
+End Function
+
+'==========================================================================
+' 6b. Hibakepek (v9.17): Data!tblHibakep -> HibakepLista -> cimsor-legordulo
+'--------------------------------------------------------------------------
+' A Hibafeltaras cimsorban a "Hibakep / Fehlerbild" felirat melletti cella
+' legordulobol valaszthato, de szabadon felulirhato (ShowError = False).
+' A lista a Data lap tblHibakep tablaja; a HibakepekFrissitese a
+' Hibamegnevezesek fajl "Bezeichnung HU" oszlopabol boviti (csak hozzaad,
+' a kezzel felvett sorok megmaradnak), ABC-sorrendbe rendezve.
+'==========================================================================
+
+' Alt+F8 -> HibakepekFrissitese
+Public Sub HibakepekFrissitese()
+
+    Dim fajl As String
+    Dim src As Workbook, sajatNyitas As Boolean
+    Dim nevek As Collection, idx As Variant
+    Dim lo As ListObject, dTabla As Object, r As Long
+    Dim nUj As Long, nMar As Long, ujLista As String
+    Dim uzenet As String, lepes As String
+
+    Const MAX_UJ_LISTA As Long = 15
+
+    On Error GoTo Hiba
+
+    lepes = "fajl kivalasztasa"
+    fajl = HibakepFajlValasztas()
+    If Len(fajl) = 0 Then Exit Sub
+
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.DisplayAlerts = False
+
+    '--- Forras megnyitasa (ha mar nyitva van, azt hasznaljuk) ------------
+    lepes = "forrasfajl megnyitasa"
+    Set src = ForrasMegnyitasa(fajl, sajatNyitas)       ' v9.17
+
+    lepes = "magyar nevek beolvasasa"
+    Set nevek = HibakepNevekBeolvasasa(src)
+
+    If sajatNyitas Then src.Close SaveChanges:=False
+    Set src = Nothing
+
+    If nevek.Count = 0 Then
+        Err.Raise vbObjectError + 550, , _
+            "A fajlban nem talalhato 'Bezeichnung HU' oszlop, vagy nincs alatta magyar nev."
+    End If
+
+    '--- tblHibakep bovitese (csak hozzaad) --------------------------------
+    lepes = "tblHibakep bovitese"
+    Set lo = HibakepTablaBiztositasa()
+    Set dTabla = CreateObject("Scripting.Dictionary")
+    dTabla.CompareMode = vbTextCompare
+    If Not lo.DataBodyRange Is Nothing Then
+        For r = 1 To lo.ListRows.Count
+            If Len(Szoveg(lo.DataBodyRange.Cells(r, 1).Value)) > 0 Then
+                dTabla(Szoveg(lo.DataBodyRange.Cells(r, 1).Value)) = True
+            End If
+        Next r
+    End If
+
+    For Each idx In nevek
+        If dTabla.Exists(idx) Then
+            nMar = nMar + 1
+        Else
+            HibakepSorHozzaadasa lo, CStr(idx)
+            dTabla.Add idx, True
+            nUj = nUj + 1
+            If nUj <= MAX_UJ_LISTA Then ujLista = ujLista & "  " & idx & vbLf
+        End If
+    Next idx
+    If nUj > MAX_UJ_LISTA Then ujLista = ujLista & TovabbiSzoveg(nUj - MAX_UJ_LISTA)
+
+    lepes = "rendezes"
+    If lo.ListRows.Count > 1 Then
+        With lo.Sort
+            .SortFields.Clear
+            .SortFields.Add Key:=lo.ListColumns(1).DataBodyRange, _
+                            SortOn:=xlSortOnValues, Order:=xlAscending
+            .Header = xlYes
+            .Apply
+        End With
+    End If
+
+    lepes = "legordulo beallitasa"
+    HibakepLegorduloBeallitas ThisWorkbook.Worksheets(SH_FOTO)
+
+    lepes = "utvonal mentese"
+    UtvonalMentes fajl, NEV_HIBAKEP_UTVONAL
+
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+
+    uzenet = "Forras: " & Mid$(fajl, InStrRev(fajl, "\") + 1) & vbLf & vbLf & _
+             "Magyar nev a forrasban: " & nevek.Count & vbLf & _
+             "Mar szerepelt: " & nMar & vbLf & _
+             "Uj hibakep: " & nUj & vbLf & ujLista & vbLf & _
+             "Hibakepek a listaban osszesen: " & lo.ListRows.Count
+    MsgBox uzenet, vbInformation, "Hibakepek frissitese"
+    Exit Sub
+
+Hiba:
+    Dim hSzam As Long, hSzoveg As String
+    hSzam = Err.Number: hSzoveg = Err.Description
+    On Error Resume Next
+    If sajatNyitas Then
+        If Not src Is Nothing Then src.Close SaveChanges:=False
+    End If
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+    MsgBox "A frissites megszakadt [" & lepes & "]:" & vbLf & hSzoveg & _
+           " (" & hSzam & ")", vbExclamation, "Hibakepek frissitese"
+End Sub
+
+' A forrasfajl magyar nevei, a forras sorrendjeben, ismetles nelkul.
+' Fejlec: az elso 10 sor / 20 oszlop "Bezeichnung HU..." kezdetu cellaja
+' (NormB). A lista az elso teljesen ures sorig tart (utana mar csak
+' megjegyzes jon, pl. "Anmerkung: ..."); a magyar nev nelkuli sor kimarad.
+Private Function HibakepNevekBeolvasasa(src As Workbook) As Collection
+
+    Dim ws As Worksheet, nevek As Collection, dVan As Object
+    Dim hdrSor As Long, cHu As Long, r As Long, c As Long, utSor As Long
+    Dim nev As String
+
+    Set nevek = New Collection
+    Set dVan = CreateObject("Scripting.Dictionary")
+    dVan.CompareMode = vbTextCompare
+
+    For Each ws In src.Worksheets
+        hdrSor = 0: cHu = 0
+        For r = 1 To 10
+            For c = 1 To 20
+                If Left$(NormB(Szoveg(ws.Cells(r, c).Value)), 13) = "BEZEICHNUNGHU" Then
+                    hdrSor = r: cHu = c
+                    Exit For
+                End If
+            Next c
+            If cHu > 0 Then Exit For
+        Next r
+
+        If cHu > 0 Then
+            utSor = ws.Cells(ws.Rows.Count, cHu).End(xlUp).Row
+            For r = hdrSor + 1 To utSor
+                If Application.WorksheetFunction.CountA(ws.Rows(r)) = 0 Then Exit For
+                nev = Szoveg(ws.Cells(r, cHu).Value)
+                If Len(nev) > 0 And Left$(NormB(nev), 9) <> "ANMERKUNG" Then
+                    If Not dVan.Exists(nev) Then
+                        dVan.Add nev, True
+                        nevek.Add nev
+                    End If
+                End If
+            Next r
+            Exit For            ' az elso talalt lap utan nem keresunk tovabb
+        End If
+    Next ws
+
+    Set HibakepNevekBeolvasasa = nevek
+
+End Function
+
+' Egy uj sor a tblHibakep vegere (egy uj, ures tabla elso sorat hasznalja).
+Private Sub HibakepSorHozzaadasa(lo As ListObject, ByVal nev As String)
+    If Not lo.DataBodyRange Is Nothing Then
+        If lo.ListRows.Count = 1 And Len(Szoveg(lo.DataBodyRange.Cells(1, 1).Value)) = 0 Then
+            lo.DataBodyRange.Cells(1, 1).Value = nev
+            Exit Sub
+        End If
+    End If
+    lo.ListRows.Add.Range.Cells(1, 1).Value = nev
+End Sub
+
+' A tblHibakep tabla (ha nincs, a Data lapon letrehozza, a hasznalt terulet
+' utan egy ures oszloppal) es a HibakepLista nev biztositasa.
+Public Function HibakepTablaBiztositasa() As ListObject
+
+    Dim ws As Worksheet, lo As ListObject, oszlop As Long
+
+    Set lo = TablaBarmelyLapon(ThisWorkbook, T_HIBAKEP)
+    If lo Is Nothing Then
+        Set ws = ThisWorkbook.Worksheets(SH_DATA)
+        With ws.UsedRange
+            oszlop = .Column + .Columns.Count + 1
+        End With
+        ws.Cells(1, oszlop).Value = C_HIBAKEP
+        Set lo = ws.ListObjects.Add(xlSrcRange, ws.Cells(1, oszlop).Resize(2, 1), , xlYes)
+        lo.Name = T_HIBAKEP
+    End If
+
+    On Error Resume Next
+    ThisWorkbook.Names(NEV_HIBAKEPLISTA).Delete
+    On Error GoTo 0
+    ThisWorkbook.Names.Add Name:=NEV_HIBAKEPLISTA, _
+        RefersTo:="=" & lo.Name & "[" & lo.ListColumns(1).Name & "]"
+
+    Set HibakepTablaBiztositasa = lo
+
+End Function
+
+' A Hibafeltaras cimsorban a "Hibakep" kezdetu felirat (most E8:F8) utani
+' egyesitett cellara (most G8:I8) legordulot tesz: HibakepLista, de a
+' listan kivuli ertek is beirhato. True, ha beallitotta.
+Public Function HibakepLegorduloBeallitas(ws As Worksheet) As Boolean
+
+    Dim cimSor As Long, c As Long
+    Dim terulet As Range, cel As Range
+
+    cimSor = SorKereses(ws, H_CIM, 2, 200)
+    If cimSor = 0 Then Exit Function
+
+    c = 1
+    Do While c <= 9
+        Set terulet = ws.Cells(cimSor, c).MergeArea
+        If UCase$(Left$(Ekezetlen(Szoveg(terulet.Cells(1, 1).Value)), 7)) = "HIBAKEP" Then
+            c = terulet.Column + terulet.Columns.Count
+            If c > 9 Then Exit Function
+            Set cel = ws.Cells(cimSor, c).MergeArea
+
+            On Error Resume Next
+            cel.Validation.Delete
+            On Error GoTo 0
+            With cel.Validation
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+                     Operator:=xlBetween, Formula1:="=" & NEV_HIBAKEPLISTA
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .ShowError = False              ' listan kivuli ertek is beirhato
+            End With
+            HibakepLegorduloBeallitas = True
+            Exit Function
+        End If
+        c = terulet.Column + terulet.Columns.Count
+    Loop
+
+End Function
+
+' Fajlvalaszto: az utoljara hasznalt fajlrol, ha nincs, a Fotoblatt
+' mappajabol indul.
+Private Function HibakepFajlValasztas() As String
+
+    Dim kezdo As String
+
+    kezdo = UtvonalOlvasas(NEV_HIBAKEP_UTVONAL)
+    If Len(kezdo) > 0 Then
+        If Not UtvonalLetezik(kezdo, vbNormal) Then kezdo = ""
+    End If
+    If Len(kezdo) = 0 Then
+        If UtvonalLetezik(ThisWorkbook.Path & "\", vbDirectory) Then kezdo = ThisWorkbook.Path & "\"
+    End If
+
+    With Application.FileDialog(msoFileDialogFilePicker)
+        .Title = "Hibamegnevezesek fajl kivalasztasa"
+        .AllowMultiSelect = False
+        .Filters.Clear
+        .Filters.Add "Excel", "*.xls;*.xlsx;*.xlsm"
+        If Len(kezdo) > 0 Then .InitialFileName = kezdo
+        If .Show = -1 Then HibakepFajlValasztas = .SelectedItems(1)
+    End With
+
 End Function
 
 '==========================================================================

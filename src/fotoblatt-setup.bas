@@ -1,7 +1,15 @@
 Attribute VB_Name = "modBeallitas"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.16 - 2026.10.08.
+' Verzio 9.18 - 2026.10.14.
+'   9.18: verzio-igazitas a modFotolap 9.18-hoz, ebben a modulban nincs
+'         kodvaltozas.
+'   9.17: lablec "Verzio" cella = FOTOBLATT_VERZIO (LablecVerzio, a beallitas
+'         es az ujraigazitas is irja). Egyszeri takaritas (RegiMaradvanyokTorlese):
+'         a regi rejtett A6ListaMod nev torlese. Hibakep-legordulo a
+'         Hibafeltaras cimsorban (Data!tblHibakep -> HibakepLista), a vegen
+'         a hibamegnevezesek beolvasasat is felajanlja (HibakepekFrissitese).
+'         A horgony-ellenorzes a H_CIM / H_FEJLEC allandokat hasznalja.
 '   9.16: a beallitas vegen a TERMEKADATOK utan a cikkszamtorzs (A/N-szamok)
 '         beolvasasat is felajanlja (CikkszamtorzsFrissitese).
 '
@@ -71,6 +79,14 @@ Public Sub SetupFotolap()
     LegorduloBeallit ws.Range("H6:I7"), "=ProdLista"       ' gyartoberendezes
     uzenet = uzenet & "- A2 / A6 / G6 / H6 legordulo helyreallitva" & vbLf
 
+    '--- 3b. v9.17: hibakep-legordulo a Hibafeltaras cimsorban ------------
+    HibakepTablaBiztositasa
+    If HibakepLegorduloBeallitas(ws) Then
+        uzenet = uzenet & "- Hibakep legordulo beallitva (Data!tblHibakep)" & vbLf
+    Else
+        uzenet = uzenet & "- Hibakep legordulo: a cimsorban nincs 'Hibakep' felirat, kihagyva" & vbLf
+    End If
+
     '--- 4. Datummezo ----------------------------------------------------
     On Error Resume Next
     ws.Range("I3").Validation.Delete       ' regi, #REF!-re mutato ervenyesites
@@ -87,9 +103,19 @@ Public Sub SetupFotolap()
     On Error GoTo Hiba
     ElerhetoMagassagUjraszamol
 
+    '--- 5b. v9.17: regi maradvanyok (A6ListaMod) -------------------------
+    uzenet = uzenet & RegiMaradvanyokTorlese(ws)
+
     '--- 6. Szerkezeti normalizalas + A4 igazitas -------------------------
     HibafeltarasKitoltes ws
     uzenet = uzenet & "- Hibafeltaras blokk es kepterulet igazitva" & vbLf
+
+    '--- 7. v9.17: lablec verzio -----------------------------------------
+    If LablecVerzio(ws) Then
+        uzenet = uzenet & "- Lablec verzio: " & FOTOBLATT_VERZIO & vbLf
+    Else
+        uzenet = uzenet & "- Lablec: 'Verzio' cella nem talalhato, kihagyva" & vbLf
+    End If
 
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
@@ -107,6 +133,12 @@ Public Sub SetupFotolap()
     If MsgBox("Beolvassam most a cikksz" & ChrW(225) & "mt" & ChrW(246) & "rzset (A/N-sz" & _
               ChrW(225) & "mok)?", vbQuestion + vbYesNo, "Fotolap beallitas") = vbYes Then
         CikkszamtorzsFrissitese
+    End If
+
+    ' v9.17: hibamegnevezesek (magyar nevek) a hibakep-legordulohoz
+    If MsgBox("Beolvassam most a hibamegnevez" & ChrW(233) & "seket (Hibamegnevez" & _
+              ChrW(233) & "sek.xls)?", vbQuestion + vbYesNo, "Fotolap beallitas") = vbYes Then
+        HibakepekFrissitese
     End If
     Exit Sub
 
@@ -146,6 +178,57 @@ Private Sub LegorduloBeallit(cel As Range, ByVal keplet As String)
 End Sub
 
 
+'--------------------------------------------------------------------------
+' v9.17: a lablec "Verzio" cellaja = "Verzio: " & FOTOBLATT_VERZIO.
+' A "Keszitette" (H_VEG) sorban, a B:I oszlopokban keresi azt a cellat,
+' amelynek szovege (ekezet nelkul) "Verzio"-val kezdodik (most: D59).
+' Ha a sor vagy a cella nem talalhato, csendben kihagyja (hibat nem dob).
+' True, ha beirta (a SetupFotolap osszegzesehez).
+'--------------------------------------------------------------------------
+Private Function LablecVerzio(ws As Worksheet) As Boolean
+
+    Dim sor As Long, c As Long
+
+    On Error GoTo Vege
+    sor = SorKereses(ws, H_VEG, 2, 200)
+    If sor = 0 Then Exit Function
+
+    For c = 2 To 9
+        If LCase$(Left$(Ekezetlen(Trim$(CStr(ws.Cells(sor, c).Value))), 6)) = "verzio" Then
+            ws.Cells(sor, c).Value = "Verzio: " & FOTOBLATT_VERZIO
+            LablecVerzio = True
+            Exit Function
+        End If
+    Next c
+
+Vege:
+End Function
+
+
+'--------------------------------------------------------------------------
+' v9.17: egyszeri takaritas, a SetupFotolap hivja. Visszaad: osszegzo sorok.
+' A regi, rejtett A6ListaMod nev torlese (a 9.7-9.10-es kereso maradvanya).
+' (A Hibafeltaras cimsorhoz NEM nyul: az E oszlopban a "Hibakep /
+' Fehlerbild" felirat, mellette a hibakep-legordulo all.)
+'--------------------------------------------------------------------------
+Private Function RegiMaradvanyokTorlese(ws As Worksheet) As String
+
+    Dim nev As Name
+    Dim ki As String
+
+    On Error Resume Next
+    Set nev = ThisWorkbook.Names("A6ListaMod")
+    On Error GoTo 0
+    If Not nev Is Nothing Then
+        nev.Delete
+        ki = ki & "- Regi A6ListaMod nev torolve" & vbLf
+    End If
+
+    RegiMaradvanyokTorlese = ki
+
+End Function
+
+
 Private Function TablaLetezik(ws As Worksheet, ByVal nev As String) As Boolean
 
     Dim lo As ListObject
@@ -169,6 +252,7 @@ Public Sub FotolapUjraigazitas()
     Application.EnableEvents = False
     ElerhetoMagassagUjraszamol
     HibafeltarasKitoltes ThisWorkbook.Worksheets(SH_FOTO)
+    LablecVerzio ThisWorkbook.Worksheets(SH_FOTO)          ' v9.17
 
 Hiba:
     Application.DisplayAlerts = True
@@ -196,7 +280,7 @@ Public Sub HorgonyokEllenorzese()
 
     Set ws = ThisWorkbook.Worksheets(SH_FOTO)
 
-    horgonyok = Array("Hibafeltaras", "Hibakep / Fehlerbild", "WZG IH", _
+    horgonyok = Array(H_CIM, H_FEJLEC, "WZG IH", _
                       "Kepek/Bilder", "Intezkedesek WIH", "Keszitette")
 
     For i = LBound(horgonyok) To UBound(horgonyok)
@@ -226,7 +310,7 @@ Public Sub HibafeltarasMegmutatasa()
     Set ws = ThisWorkbook.Worksheets(SH_FOTO)
 
     cimSor = SorKereses(ws, "Hibafeltaras", 2, 200)
-    hdrSor = SorKereses(ws, "Hibakep / Fehlerbild", 2, 200)
+    hdrSor = SorKereses(ws, H_FEJLEC, 2, 200)
 
     If cimSor = 0 Or hdrSor = 0 Or hdrSor - 1 < cimSor Then
         MsgBox "A blokk hatarai nem allapithatok meg.", vbExclamation

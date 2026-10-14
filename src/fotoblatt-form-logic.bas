@@ -1,7 +1,29 @@
 Attribute VB_Name = "modFotolap"
 ' Fejlesztes es karbantartas : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary Kft. - Kecskemet, PW
-' Verzio 9.2 - 2026.09.22.
+' Verzio 9.18 - 2026.10.14.
+'   9.18: Hibafeltaras valaszok (G:I):
+'         - Alapertek (KerdesAlapertek): ServoTPS-nel a 3 "megtalalhato"
+'           kerdes valasza a Data!IgenNem tabla "nem" kezdetu erteke
+'           ("nem / nein"). Nincs hozza kulon oszlop a Data lapon.
+'         - Szurkites (SZURKE_TABLAK, most csak ServoTPS = 7.41 / 7.22):
+'           ures valasz szurke hatteru, kitoltott feher. Feltetelesen
+'           formazva, igy kezi bevitelre, beillesztesre, torlesre is
+'           azonnal valt, esemenykezelo nelkul.
+'         - A tobbi berendezesnel a valaszcellak hattere torlodik (nincs
+'           kitoltes, nincs felteteles formazas), igy berendezesvaltaskor
+'           nem marad ott a regi szurkites.
+'         ValidaciosLista: az igen/nem mintak kulcsszavasak lettek ("-e" /
+'         " e" nelkul), igy a kerdes atfogalmazasa nem rontja el. Uj igen/nem
+'         legordulot kap: ServoTPS/LBL "el lett mentve?", LBL "Palettak
+'         megjelolesre kerultek?", "Zarolas tortent?", "Okozott allasidot?",
+'         "Koveto gyartast erintheti?", NA "megtalalhato a ..." (2 kerdes).
+'   9.17: FOTOBLATT_VERZIO - a kiadasi verzio egyetlen helye (a lablec
+'         "Verzio" cellajat a modBeallitas.LablecVerzio irja). A H_CIM,
+'         H_FEJLEC es H_VEG horgony Public lett (a modBeallitas is hasznalja).
+'         A kerdesblokk alatti fejlecsor horgonya: "Hibaleiras /
+'         Fehlerbeschreibung" (a lapon atnevezve; a "Hibakep / Fehlerbild"
+'         felirat mostantol csak a cimsorban, az E oszlopban all).
 '
 ' Belso fejlesztes. Modositas kizarolag a karbantartoval egyeztetve.
 
@@ -12,7 +34,7 @@ Option Compare Text
 ' Fotolap (Fotoblatt) - futasideju logika
 '--------------------------------------------------------------------------
 ' A lapmodul csak esemenyt fog el, a munkat ezek az eljarasok vegzik.
-' Verzio: 9.2
+' Kiadasi verzio: l. FOTOBLATT_VERZIO lent.
 '
 ' FONTOS: ez a fajl szandekosan CSAK ASCII karaktereket tartalmaz.
 ' A VBE a .bas fajlokat a rendszer kodlapjaval olvassa be, nem UTF-8-kent,
@@ -30,6 +52,9 @@ Public Const SH_FOTO  As String = "Fotoblatt"
 Public Const SH_DATA  As String = "Data"
 Public Const SH_PARTS As String = "Parts"
 
+'--- Kiadasi verzio (v9.17): EZ az egyetlen hely, ahol szerepel -----------
+Public Const FOTOBLATT_VERZIO As String = "9.18"
+
 '--- Viselkedes ----------------------------------------------------------
 ' True  = minden szerkesztes az aktualis gepfelhasznalora allitja az A2-t
 ' False = az A2 csak akkor toltodik, ha meg ures (kezi valasztas megmarad)
@@ -40,13 +65,18 @@ Public Const ELSO_KERDES_SOR As Long = 9     ' tartalek, ha a cimsor nem talalha
 Private Const MAX_KERES_SOR  As Long = 200   ' meddig keressuk a horgonyszovegeket
 Private Const UTOLSO_OSZLOP  As Long = 9     ' A:I
 
+'--- Hibafeltaras valaszok (v9.18) ---------------------------------------
+' Azok a Data-tablak, ahol az ures valasz szurke, a kitoltott feher.
+' Bovites: "|ServoTPS|LBL|" stb.
+Private Const SZURKE_TABLAK    As String = "|ServoTPS|"
+
 '--- Horgonyszovegek, ekezet nelkuli alakban -----------------------------
-Private Const H_CIM     As String = "Hibafeltaras"
-Private Const H_FEJLEC  As String = "Hibakep / Fehlerbild"
+Public Const H_CIM      As String = "Hibafeltaras"     ' v9.17: Public (modBeallitas)
+Public Const H_FEJLEC   As String = "Hibaleiras / Fehlerbeschreibung"   ' v9.17
 Private Const H_WZG     As String = "WZG IH"
 Private Const H_KEPEK   As String = "Kepek/Bilder"
 Private Const H_INTEZK  As String = "Intezkedesek WIH"
-Private Const H_VEG     As String = "Keszitette"
+Public Const H_VEG      As String = "Keszitette"       ' v9.17: Public (modBeallitas)
 
 '--- A4 igazitas ---------------------------------------------------------
 Private Const A4_MAGASSAG_PT As Double = 841.89   ' A4 allo, pont
@@ -140,6 +170,9 @@ Public Sub HibafeltarasKitoltes(ws As Worksheet)
     Dim vanTabla As Boolean
     Dim lepes As String
     Dim hibaSzam As Long, hibaSzoveg As String
+    Dim szurkites As Boolean                           ' v9.18
+    Dim valasz As Range                                ' v9.18
+    Dim alapertek As String                            ' v9.18
 
     On Error GoTo Hiba
     lepes = "indulas"
@@ -215,6 +248,8 @@ Public Sub HibafeltarasKitoltes(ws As Worksheet)
         ws.Range(ws.Cells(r, 1), ws.Cells(r, 6)).Merge     ' kerdes: A:F
         ws.Range(ws.Cells(r, 7), ws.Cells(r, UTOLSO_OSZLOP)).Merge   ' valasz: G:I
         ValaszLegordulo ws.Range(ws.Cells(r, 7), ws.Cells(r, UTOLSO_OSZLOP)), ""
+        ' v9.18: a beszurt/masolt sorok formazasa se maradjon itt
+        ValaszHatter ws.Range(ws.Cells(r, 7), ws.Cells(r, UTOLSO_OSZLOP)), False
     Next r
 
     lepes = "fejlecsor rendezese (sor " & hdrSor & ")"
@@ -222,12 +257,25 @@ Public Sub HibafeltarasKitoltes(ws As Worksheet)
 
     '--- Kitoltes vagy elrejtes ------------------------------------------
     If vanTabla Then
+        szurkites = (InStr(1, SZURKE_TABLAK, "|" & tbl.Name & "|", vbTextCompare) > 0)
+
         For i = 1 To hdrSor - elsoKerdes
             r = elsoKerdes + i - 1
             lepes = "kerdes betoltese (sor " & r & ")"
             kerdes = CStr(tbl.DataBodyRange.Cells(i, 1).Value)
             ws.Cells(r, 1).Value = kerdes
-            ValaszLegordulo ws.Range(ws.Cells(r, 7), ws.Cells(r, UTOLSO_OSZLOP)), kerdes
+
+            Set valasz = ws.Range(ws.Cells(r, 7), ws.Cells(r, UTOLSO_OSZLOP))
+            ValaszLegordulo valasz, kerdes
+
+            ' v9.18: alapertek (l. KerdesAlapertek)
+            lepes = "alapertek beirasa (sor " & r & ")"
+            alapertek = KerdesAlapertek(tbl.Name, kerdes)
+            If Len(alapertek) > 0 Then valasz.Cells(1, 1).Value = alapertek
+
+            ' v9.18: ures = szurke, kitoltott = feher
+            lepes = "valasz hattere (sor " & r & ")"
+            ValaszHatter valasz, szurkites
         Next i
     Else
         lepes = "blokk elrejtese"
@@ -287,6 +335,102 @@ Private Sub FejlecSorRendezes(ws As Worksheet, ByVal hdrSor As Long)
 End Sub
 
 
+'--------------------------------------------------------------------------
+' v9.18: valaszcella (G:I) hattere.
+' szurkites = True : alap kitoltes szurke (Hatter 1, 25%-kal sotetebb), es
+'                    felteteles formazas: ha a G cellaban van szoveg -> feher.
+'                    Soronkent abszolut hivatkozas ($G$12), igy nem fugg az
+'                    aktiv cellatol (a FormatConditions.Add relativ
+'                    hivatkozast az aktiv cellahoz kepest ertelmezne).
+' szurkites = False: nincs kitoltes, nincs felteteles formazas.
+'--------------------------------------------------------------------------
+Private Sub ValaszHatter(cel As Range, ByVal szurkites As Boolean)
+
+    Dim fc As FormatCondition
+
+    cel.FormatConditions.Delete
+
+    If Not szurkites Then
+        cel.Interior.Pattern = xlNone
+        Exit Sub
+    End If
+
+    With cel.Interior
+        .Pattern = xlSolid
+        .ThemeColor = xlThemeColorDark1
+        .TintAndShade = -0.249977111117893          ' "25%-kal sotetebb"
+    End With
+
+    Set fc = cel.FormatConditions.Add(Type:=xlExpression, _
+             Formula1:="=LEN(TRIM(" & cel.Cells(1, 1).Address(True, True) & "))>0")
+    With fc.Interior
+        .Pattern = xlSolid
+        .ThemeColor = xlThemeColorDark1
+        .TintAndShade = 0                           ' feher
+    End With
+    fc.StopIfTrue = False
+
+End Sub
+
+
+'--------------------------------------------------------------------------
+' v9.18: a kerdes valaszanak alaperteke. Ures = nincs alapertek.
+' ITT LEHET BOVITENI. A kerdes szoveget ekezet nelkul hasonlitjuk (mint a
+' ValidaciosLista-ban), igy a Data-tabla sorrendjetol fuggetlen.
+' A valasz szovege nincs beegetve: az IgenNem tablabol jon.
+'--------------------------------------------------------------------------
+Private Function KerdesAlapertek(ByVal tablaNev As String, ByVal kerdes As String) As String
+
+    Dim k As String
+    k = Ekezetlen(Trim$(kerdes))
+    KerdesAlapertek = ""
+    If Len(k) = 0 Then Exit Function
+
+    Select Case True
+
+        ' ServoTPS (7.41 / 7.22): elozo gyartas utolso darabja, mintadarab,
+        ' elozo RK2 darabok -> "nem / nein"
+        Case StrComp(tablaNev, "ServoTPS", vbTextCompare) = 0 And _
+             Tartalmaz(k, "megtalalhato")
+            KerdesAlapertek = IgenNemErtek("nem")
+
+    End Select
+
+End Function
+
+
+'--------------------------------------------------------------------------
+' v9.18: a Data!IgenNem tabla elso olyan erteke, amely a megadott szoval
+' kezdodik ("nem" -> "nem / nein", "igen" -> "igen / ja"). Sorrend- es
+' szovegvaltozas-fuggetlen. Ures, ha a tabla vagy az ertek nem talalhato.
+'--------------------------------------------------------------------------
+Private Function IgenNemErtek(ByVal kezdet As String) As String
+
+    Dim lo As ListObject
+    Dim c As Range
+    Dim ertek As String
+
+    IgenNemErtek = ""
+
+    On Error Resume Next
+    Set lo = ThisWorkbook.Worksheets(SH_DATA).ListObjects("IgenNem")
+    On Error GoTo 0
+    If lo Is Nothing Then Exit Function
+    If lo.DataBodyRange Is Nothing Then Exit Function
+
+    For Each c In lo.DataBodyRange.Columns(1).Cells
+        If Not IsError(c.Value) Then
+            ertek = Trim$(CStr(c.Value))
+            If Ekezetlen(ertek) Like kezdet & "*" Then     ' Option Compare Text
+                IgenNemErtek = ertek
+                Exit Function
+            End If
+        End If
+    Next c
+
+End Function
+
+
 '==========================================================================
 ' 5. Melyik kerdeshez melyik legordulo
 '--------------------------------------------------------------------------
@@ -311,14 +455,21 @@ Private Function ValidaciosLista(ByVal kerdes As String) As String
              Tartalmaz(k, "hiba keletkezesi helye")
             ValidaciosLista = "OPLista"
 
-        Case Tartalmaz(k, "megtalalhato-e"), _
-             Tartalmaz(k, "el lett-e mentve"), _
+        ' v9.18: kulcsszavak "-e" / " e" nelkul, hogy az atfogalmazas
+        ' ("Tortent-e zarolas?" -> "Zarolas tortent?") ne rontsa el.
+        ' Vigyazat: a "Zarolas, ha volt, akkor mennyi ..." szabad szoveg
+        ' marad, ezert nem eleg a puszta "zarolas".
+        Case Tartalmaz(k, "megtalalhato"), _
+             Tartalmaz(k, "lett mentve"), _
+             Tartalmaz(k, "lett-e mentve"), _
              Tartalmaz(k, "eszlelve"), _
-             Tartalmaz(k, "kerultek e"), _
+             Tartalmaz(k, "megjelolesre"), _
+             Tartalmaz(k, "zarolas tortent"), _
+             Tartalmaz(k, "tortent-e zarolas"), _
              Tartalmaz(k, "tortent e zarolas"), _
              Tartalmaz(k, "lehajlas"), _
-             Tartalmaz(k, "okozott e"), _
-             Tartalmaz(k, "erintheti e")
+             Tartalmaz(k, "okozott"), _
+             Tartalmaz(k, "erintheti")
             ValidaciosLista = "IgenNemLista"
 
     End Select
@@ -326,8 +477,8 @@ Private Function ValidaciosLista(ByVal kerdes As String) As String
 End Function
 
 
-Private Function Tartalmaz(ByVal szoveg As String, ByVal minta As String) As Boolean
-    Tartalmaz = (InStr(1, szoveg, minta, vbTextCompare) > 0)
+Private Function Tartalmaz(ByVal Szoveg As String, ByVal minta As String) As Boolean
+    Tartalmaz = (InStr(1, Szoveg, minta, vbTextCompare) > 0)
 End Function
 
 
@@ -379,7 +530,7 @@ Public Sub A4Igazitas(ws As Worksheet)
     ' Ha barmelyik horgony hianyzik, inkabb nem nyulunk a magassagokhoz
     If hdrSor = 0 Or wzgSor = 0 Or kepekSor = 0 Or intezkSor = 0 Or vegSor = 0 Then Exit Sub
 
-    kep1Tol = hdrSor + 1:   kep1Ig = wzgSor - 1        ' Hibakep terulet
+    kep1Tol = hdrSor + 1:   kep1Ig = wzgSor - 1        ' Hibaleiras terulet
     kep2Tol = kepekSor + 1: kep2Ig = intezkSor - 1     ' Kepek/Bilder terulet
     If kep1Ig < kep1Tol Or kep2Ig < kep2Tol Then Exit Sub
 

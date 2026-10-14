@@ -1,6 +1,12 @@
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.15 - 2026.10.08.
+' Verzio 9.18 - 2026.10.14.
+'   9.18: verzio-igazitas a modFotolap 9.18-hoz, a lapkod nem valtozott.
+'   9.17: - Az E4/E6 logika egy helyen: AnyagFeliratBeallitas (modTermekadatok),
+'           az AnyagFelirat csak azt hivja (tovabbra is elsokent).
+'         - H6/G6 valtozaskor nincs A6 lista ujraepites (a lista nem fugg
+'           toluk, v9.5). Lapra lepeskor csak akkor epul ujra, ha az Article
+'           valtozott (A6ListaElavult).
 '   9.15: egyseges cikkszam-formatum (pl. "R244 637 0100"), csak a komment
 '         peldaja frissult, a logika nem valtozott.
 '   9.14: - E4/E6 kozvetlenul az A6 alapjan valt, MINDEN mas lepes elott
@@ -33,12 +39,10 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         MegnevezesKitoltes Me
     End If
 
+    ' v9.17: H6/G6 valtozasa nem epiti ujra az A6 listat (nem fugg toluk)
     If Not Intersect(Target, Me.Range("H6")) Is Nothing Then
         HibafeltarasKitoltes Me
-        A6ListaFrissites Me
     End If
-
-    If Not Intersect(Target, Me.Range("G6")) Is Nothing Then A6ListaFrissites Me
 
 CleanExit:
     Application.CutCopyMode = False
@@ -57,11 +61,12 @@ End Sub
 
 ' Lapra lepeskor frissul az A6 lista, igy a Parts lapon kezzel vegzett
 ' modositasok is azonnal latszanak a legordulokben.
+' v9.17: csak akkor epul ujra, ha az Article valtozott (gyors atlepes).
 Private Sub Worksheet_Activate()
 
     On Error Resume Next
     Application.EnableEvents = False
-    A6ListaFrissites Me
+    If A6ListaElavult() Then A6ListaFrissites Me
     Application.EnableEvents = True
 
 End Sub
@@ -71,22 +76,11 @@ End Sub
 ' E4 / E6 az A6 elso betuje alapjan.
 ' A legordulo szovege ("R244 637 0100 . Megnevezes . Tipus") es a beirt
 ' cikkszam is a szammal kezdodik, ezert eleg az elso karakter.
+' v9.17: a logika a modTermekadatok.AnyagFeliratBeallitas-ban van.
 '--------------------------------------------------------------------------
 Private Sub AnyagFelirat()
 
-    Dim elso As String
-
-    elso = UCase$(Left$(Trim$(CStr(Me.Range("A6").Value)), 1))
-
-    If elso = "R" Then
-        Me.Range("E4").Value = "Alapanyag/Material"
-        Me.Range("E6").Value = "Platine"
-    Else
-        Me.Range("E4").Value = "Pr" & ChrW(233) & "sel" & ChrW(233) & "s/Abpressung"
-        If StrComp(Trim$(CStr(Me.Range("E6").Value)), "Platine", vbTextCompare) = 0 Then
-            Me.Range("E6").Value = ""
-        End If
-    End If
+    AnyagFeliratBeallitas Me, CStr(Me.Range("A6").Value)
 
 End Sub
 
