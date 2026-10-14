@@ -2,6 +2,11 @@ Attribute VB_Name = "modFotolap"
 ' Fejlesztes es karbantartas : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary Kft. - Kecskemet, PW
 ' Verzio 9.18 - 2026.10.14.
+'   9.18c: Utomunka (NA) is: alapertek (eszlelve gyartas soran, mintadarab,
+'          elozo RK2 darabok = nem) es ures = szurke / kitoltott = feher.
+'          Ezzel mindharom kerdesblokk egyforman viselkedik.
+'   9.18b: 7.50 (LBL) is: alapertekek (RK2 = nem, palettak megjelolese =
+'          igen, zarolas = nem) es ures = szurke / kitoltott = feher.
 '   9.18: Hibafeltaras valaszok (G:I):
 '         - Alapertek (KerdesAlapertek): ServoTPS-nel a 3 "megtalalhato"
 '           kerdes valasza a Data!IgenNem tabla "nem" kezdetu erteke
@@ -68,7 +73,7 @@ Private Const UTOLSO_OSZLOP  As Long = 9     ' A:I
 '--- Hibafeltaras valaszok (v9.18) ---------------------------------------
 ' Azok a Data-tablak, ahol az ures valasz szurke, a kitoltott feher.
 ' Bovites: "|ServoTPS|LBL|" stb.
-Private Const SZURKE_TABLAK    As String = "|ServoTPS|"
+Private Const SZURKE_TABLAK    As String = "|ServoTPS|LBL|NA|"
 
 '--- Horgonyszovegek, ekezet nelkuli alakban -----------------------------
 Public Const H_CIM      As String = "Hibafeltaras"     ' v9.17: Public (modBeallitas)
@@ -386,13 +391,31 @@ Private Function KerdesAlapertek(ByVal tablaNev As String, ByVal kerdes As Strin
     KerdesAlapertek = ""
     If Len(k) = 0 Then Exit Function
 
-    Select Case True
+    Select Case LCase$(tablaNev)
 
-        ' ServoTPS (7.41 / 7.22): elozo gyartas utolso darabja, mintadarab,
-        ' elozo RK2 darabok -> "nem / nein"
-        Case StrComp(tablaNev, "ServoTPS", vbTextCompare) = 0 And _
-             Tartalmaz(k, "megtalalhato")
-            KerdesAlapertek = IgenNemErtek("nem")
+        Case "servotps"                                  ' 7.41 / 7.22
+            ' elozo gyartas utolso darabja, mintadarab, elozo RK2 darabok
+            If Tartalmaz(k, "megtalalhato") Then
+                KerdesAlapertek = IgenNemErtek("nem")
+            End If
+
+        Case "lbl"                                       ' 7.50
+            Select Case True
+                Case Tartalmaz(k, "megtalalhato")        ' elozo RK2 darabok
+                    KerdesAlapertek = IgenNemErtek("nem")
+                Case Tartalmaz(k, "megjelolesre")        ' palettak megjelolve
+                    KerdesAlapertek = IgenNemErtek("igen")
+                Case Tartalmaz(k, "zarolas tortent"), _
+                     Tartalmaz(k, "tortent-e zarolas"), _
+                     Tartalmaz(k, "tortent e zarolas")   ' zarolas
+                    KerdesAlapertek = IgenNemErtek("nem")
+            End Select
+
+        Case "na"                                        ' Utomunka
+            ' eszlelve gyartas soran, mintadarab, elozo RK2 darabok
+            If Tartalmaz(k, "eszlelve") Or Tartalmaz(k, "megtalalhato") Then
+                KerdesAlapertek = IgenNemErtek("nem")
+            End If
 
     End Select
 
