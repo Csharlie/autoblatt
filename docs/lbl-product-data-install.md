@@ -4,7 +4,7 @@
 
 | Fájl | Mi ez |
 |---|---|
-| `workbooks/lbl-product-data.xlsm` | a saját, optimalizált termékadatok (tábla: `tblTermek`) |
+| `OneDrive\Projects\autoblatt\data\lbl-product-data.xlsm` | a saját, optimalizált termékadatok (tábla: `tblTermek`) |
 | `src/lbl-product-data-import.bas` | VB modul: `modTermekadatok` (LBL oldal) |
 
 > ⚠️ Ez a modul csak ebbe a munkafüzetbe való. A Fotoblatt ugyanilyen nevű moduljával nem szabad összekeverni.

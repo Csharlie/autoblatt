@@ -1,7 +1,12 @@
 Attribute VB_Name = "modTermekadatok"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.19 - 2026.10.14.
+' Verzio 9.20 - 2026.10.15.
+'   9.20: uj mappaszerkezet: a bemeno fajlok (lbl-product-data.xlsm,
+'        cikkszamtorzs, hibamegnevezesek, cikkszamok) a munkafuzet melletti
+'        data\ mappaban vannak. A harom fajlvalaszto, ha a megjegyzett
+'        utvonal mar nem letezik, a data\ mappaban nyilik meg (DataMappa;
+'        OneDrive-on a Workbook.Path URL-jet a helyi mappara kepezi le).
 '   9.19: HibakepCella - a hibakep-cella keresese kulon fuggvenyben (a
 '        legordulo es az e-mail targya is ezt hasznalja), mukodes valtozatlan.
 '   9.18: verzio-igazitas a modFotolap 9.18-hoz, ebben a modulban nincs
@@ -168,6 +173,9 @@ Public Const NEV_HIBAKEPLISTA As String = "HibakepLista"          ' legordulo fo
 Private Const T_HIBAKEP As String = "tblHibakep"                  ' Data lap
 Private Const C_HIBAKEP As String = "Hibakep"
 Private Const NEV_HIBAKEP_UTVONAL As String = "HibakepUtvonal"    ' rejtett nev
+
+'--- Bemeno fajlok mappaja (v9.20) ------------------------------------------
+Private Const DATA_MAPPA_NEV As String = "data"     ' a munkafuzet melletti almappa
 
 '--- Allapot (v9.17) ------------------------------------------------------
 ' Az Article alairasa az utolso A6-lista epitesekor (l. A6ListaAlairas).
@@ -446,6 +454,7 @@ Private Function ForrasFajlValasztas() As String
     If Len(kezdo) > 0 Then
         If Not UtvonalLetezik(kezdo, vbNormal) Then kezdo = ""
     End If
+    If Len(kezdo) = 0 Then kezdo = DataMappa()                   ' v9.20
     If Len(kezdo) = 0 Then
         If UtvonalLetezik(TERMEKADATOK_MAPPA, vbDirectory) Then kezdo = TERMEKADATOK_MAPPA
     End If
@@ -459,6 +468,35 @@ Private Function ForrasFajlValasztas() As String
         If .Show = -1 Then ForrasFajlValasztas = .SelectedItems(1)
     End With
 
+End Function
+
+'--------------------------------------------------------------------------
+' v9.20: a munkafuzet helyi mappaja. OneDrive-rol megnyitva a Workbook.Path
+' URL (https://...-my.sharepoint.com/personal/<felhasznalo>/Documents/...);
+' ezt a helyi OneDrive-mappara kepezzuk le. Ures, ha nem kepezheto le.
+'--------------------------------------------------------------------------
+Private Function MunkafuzetMappa() As String
+    Dim ut As String, od As String, p As Long
+    ut = ThisWorkbook.Path
+    If LCase$(Left$(ut, 4)) <> "http" Then
+        MunkafuzetMappa = ut
+        Exit Function
+    End If
+    od = Environ$("OneDriveCommercial")
+    If Len(od) = 0 Then od = Environ$("OneDrive")
+    p = InStr(1, ut, "/Documents/", vbTextCompare)
+    If Len(od) = 0 Or p = 0 Then Exit Function
+    ut = Replace(Mid$(ut, p + Len("/Documents/")), "%20", " ")
+    MunkafuzetMappa = od & "\" & Replace(ut, "/", "\")
+End Function
+
+' v9.20: a bemeno fajlok mappaja (<munkafuzet mappaja>\data\), ha letezik
+Private Function DataMappa() As String
+    Dim m As String
+    m = MunkafuzetMappa()
+    If Len(m) = 0 Then Exit Function
+    m = m & "\" & DATA_MAPPA_NEV & "\"
+    If UtvonalLetezik(m, vbDirectory) Then DataMappa = m
 End Function
 
 ' Nem csatolt P: meghajtonal a Dir hibat dob, ezert vedett
@@ -823,6 +861,7 @@ Private Function TorzsFajlValasztas() As String
     If Len(kezdo) > 0 Then
         If Not UtvonalLetezik(kezdo, vbNormal) Then kezdo = ""
     End If
+    If Len(kezdo) = 0 Then kezdo = DataMappa()                   ' v9.20
     If Len(kezdo) = 0 Then
         mappa = UtvonalOlvasas(NEV_UTVONAL)
         If InStrRev(mappa, "\") > 0 Then
@@ -1728,8 +1767,9 @@ Private Function HibakepFajlValasztas() As String
     If Len(kezdo) > 0 Then
         If Not UtvonalLetezik(kezdo, vbNormal) Then kezdo = ""
     End If
+    If Len(kezdo) = 0 Then kezdo = DataMappa()                   ' v9.20
     If Len(kezdo) = 0 Then
-        If UtvonalLetezik(ThisWorkbook.Path & "\", vbDirectory) Then kezdo = ThisWorkbook.Path & "\"
+        If Len(MunkafuzetMappa()) > 0 Then kezdo = MunkafuzetMappa() & "\"
     End If
 
     With Application.FileDialog(msoFileDialogFilePicker)

@@ -4,8 +4,19 @@ Excel/VBA eszközök a MBMH Kecskemét PW Fotólap (Fotoblatt) kitöltéséhez �
 
 | Munkafüzet | Mire való | Kód |
 |---|---|---|
-| `workbooks/fotoblatt.xlsm` | Fotólap: cikkszám-legördülő, automatikus név/típus/berendezés, Hibafeltárás-blokk, A4 igazítás | `src/fotoblatt-*` |
-| `workbooks/lbl-product-data.xlsm` | Saját, optimalizált LBL termékadatok, frissítés a tulajdonos TERM_KADATOK fájljából | `src/lbl-product-data-import.bas` |
+| `OneDrive\Projects\autoblatt\autoblatt.xlsm` | Fotólap: cikkszám-legördülő, automatikus név/típus/berendezés, Hibafeltárás-blokk, hibakép-lista, A4 igazítás | `src/fotoblatt-*` |
+| `OneDrive\Projects\autoblatt\data\lbl-product-data.xlsm` | Saját, optimalizált LBL termékadatok, frissítés a tulajdonos TERM_KADATOK fájljából | `src/lbl-product-data-import.bas` |
+
+## Mappaszerkezet
+
+| Hely | Mi van ott |
+|---|---|
+| `~\Projects\autoblatt\` | a kód (ez a git-repó); a `KodFrissitese` innen tölt (`src\`) |
+| `OneDrive\Projects\autoblatt\` | a futtatott munkafüzet: csak az `autoblatt.xlsm` |
+| `OneDrive\Projects\autoblatt\data\` | minden, amit az autoblatt beolvas: `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`, `cikkszamok\` |
+| `~\Projects\autoblatt-archive\` | minden archív anyag (régi generációk, elavult munkafüzetek, git-mentések), tartalomjegyzék: `ARCHIV.md` |
+
+Munkafüzet nem kerül a repóba (`.gitignore`).
 
 - Telepítés: [`docs/fotoblatt-install.md`](docs/fotoblatt-install.md), [`docs/lbl-product-data-install.md`](docs/lbl-product-data-install.md)
 - Állapot, szabályok, teendők: [`HANDOFF.md`](HANDOFF.md)
@@ -13,7 +24,7 @@ Excel/VBA eszközök a MBMH Kecskemét PW Fotólap (Fotoblatt) kitöltéséhez �
 
 Előzmény: a korábbi autoblatt bővítmény (az AutoSheets utódja) az `autoblatt-archive` repóban található.
 
-Aktuális verzió: Fotoblatt **9.14** · LBL Product Data **1.2**
+Aktuális verzió: Fotoblatt **9.20** · LBL Product Data **1.2**
 
 Karbantartó: Sárdy Péter (PESARDY). A kód módosítása előtt egyeztess vele.
 

@@ -6,8 +6,10 @@ TERM_KADATOK*.xlsx
 ~$*
 *.tmp
 
-# Munkafüzetek: céges jóváhagyásig nem kerülnek fel (a OneDrive-on vannak)
-workbooks/*.xlsm
+# Munkafüzetek nem kerülnek a repóba: a OneDrive-on élnek
+# (OneDrive\Projects\autoblatt\autoblatt.xlsm, ...\data\), az archívum: ~\Projects\autoblatt-archive
+*.xlsm
+*.xlsb
 
 # Rendszerfájlok
 Thumbs.db

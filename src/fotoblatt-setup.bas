@@ -1,7 +1,8 @@
 Attribute VB_Name = "modBeallitas"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.19 - 2026.10.14.
+' Verzio 9.20 - 2026.10.15.
+'   9.20: verzio-igazitas (uj mappaszerkezet, l. modTermekadatok), kodvaltozas nincs.
 '   9.19: E-mail gomb a Fotoblatt lapon (K1, a nyomtatasi teruleten kivul):
 '         uj Outlook-level, targy: Cikkszam | Megnevezes | Tipus | Preseles |
 '         Hibakep | Gyarto berendezes, csatolmany: a munkafuzet masolata

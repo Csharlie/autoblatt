@@ -5,7 +5,9 @@ A kód a git-repóban él, a munkafüzetek a OneDrive-on futnak. A kettőt a `Ko
 | Hely | Mi van ott |
 |---|---|
 | `C:\Users\pesardy\Projects\autoblatt\src\` | a kód (git) – itt szerkeszted |
-| `OneDrive\Projects\autoblatt\fotoblatt.xlsm`, `lbl-product-data.xlsm` | a munkafüzetek – itt futtatod és próbálod |
+| `OneDrive\Projects\autoblatt\autoblatt.xlsm` | a Fotoblatt munkafüzet – itt futtatod és próbálod |
+| `OneDrive\Projects\autoblatt\data\` | a bemenő fájlok, köztük az `lbl-product-data.xlsm` |
+| `~\Projects\autoblatt-archive\` | archívum (régi generációk, elavult munkafüzetek) |
 
 ## Egyszeri beállítás
 
@@ -27,7 +29,7 @@ A kód a git-repóban él, a munkafüzetek a OneDrive-on futnak. A kettőt a `Ko
 
 | Munkafüzet | Fájl | Hova |
 |---|---|---|
-| fotoblatt.xlsm | `fotoblatt-form-logic.bas` | modul `modFotolap` |
+| autoblatt.xlsm | `fotoblatt-form-logic.bas` | modul `modFotolap` |
 | | `fotoblatt-setup.bas` | modul `modBeallitas` |
 | | `fotoblatt-parts-import.bas` | modul `modTermekadatok` |
 | | `fotoblatt-sheet-events.vba` | a Fotoblatt lap kódja (beillesztve) |

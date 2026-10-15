@@ -135,11 +135,14 @@ A munkafüzetek céges belső adatot tartalmaznak: cikkszámok, beszállító (p
 
 ### 5.2 Munkahelyek
 
+*Frissítve 2026.10.15.: új mappaszerkezet (l. README).*
+
 | Hely | Mi van ott | Mire való |
 |---|---|---|
-| `C:\Users\pesardy\Projects\autoblatt\` | git-repó: `src/`, `docs/`, HANDOFF, CHANGELOG; `workbooks/` (gitignore, benne az üres sablon) | fejlesztés, verziókezelés, push. Innen makró nem fut, nem is kell. |
-| `OneDrive\Projects\autoblatt\` | a használt `fotoblatt.xlsm` és `lbl-product-data.xlsm` | futtatás és Excel-munka (céges szabály: makró csak OneDrive-ról fut) |
-| `OneDrive\Projects\fotoblatt-auto\00\` | régi munkamappa | elavult, nem használjuk. A Fotoblatt `TermekadatokUtvonal` neve még ide mutat: a következő frissítéskor egyszer ki kell választani az új helyen lévő `lbl-product-data.xlsm`-et. |
+| `C:\Users\pesardy\Projects\autoblatt\` | git-repó: `src/`, `docs/`, HANDOFF, CHANGELOG, `test-data/` | fejlesztés, verziókezelés, push. Innen makró nem fut, nem is kell. Munkafüzet nem kerül ide. |
+| `OneDrive\Projects\autoblatt\` | csak az `autoblatt.xlsm` (a Fotoblatt; a korábbi `fotoblatt.xlsm` archiválva) | futtatás és Excel-munka (céges szabály: makró csak OneDrive-ról fut) |
+| `OneDrive\Projects\autoblatt\data\` | `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`, `cikkszamok\` | minden, amit az autoblatt beolvas. A fájlválasztók itt nyílnak, ha a megjegyzett hely már nem létezik (9.20). |
+| `C:\Users\pesardy\Projects\autoblatt-archive\` | régi generációk, elavult munkafüzetek, git-bundle-ök; tartalomjegyzék: `ARCHIV.md` | csak olvasásra. Helyi mappa, nincs automatikus mentése. |
 
 ### 5.3 Egyszeri átállás a GitHubon
 

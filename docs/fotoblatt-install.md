@@ -1,10 +1,11 @@
-# Fotoblatt – telepítés és működés (9.14)
+# Fotoblatt – telepítés és működés (9.20)
 
 ## Fájlok
 
 | Fájl | Mi ez | Hogyan kerül a munkafüzetbe |
 |---|---|---|
-| `workbooks/fotoblatt.xlsm` | a munkafüzet | – |
+| `OneDrive\Projects\autoblatt\autoblatt.xlsm` | a munkafüzet (a korábbi `fotoblatt.xlsm` archiválva) | – |
+| `OneDrive\Projects\autoblatt\data\` | a bemenő fájlok: `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`; a fájlválasztók itt nyílnak, ha a megjegyzett hely már nem létezik | – |
 | `src/fotoblatt-sheet-events.vba` | a Fotoblatt lap kódja (eseménykezelők) | **beillesztés** a shFotoblatt modulba |
 | `src/fotoblatt-form-logic.bas` | VB modul: `modFotolap` | Import |
 | `src/fotoblatt-setup.bas` | VB modul: `modBeallitas` | Import |
@@ -13,7 +14,7 @@
 > ⚠️ A `src/lbl-product-data-import.bas` NEM ide tartozik. Ugyanaz a modulneve (`modTermekadatok`), ezért ha ide importálod, felülírja a Fotoblatt modulját.
 
 ## A lapkód cseréje (ha csak az változik)
-0. Készíts egy másolatot a `fotoblatt.xlsm`-ről.
+0. Készíts egy másolatot az `autoblatt.xlsm`-ről.
 1. Alt+F11 → a bal oldali listában dupla klikk a **shFotoblatt (Fotoblatt)** elemre.
 2. A jobb oldali ablakban Ctrl+A, majd Delete.
 3. Nyisd meg a `fotoblatt-sheet-events.vba`-t Jegyzettömbben, Ctrl+A, Ctrl+C, és illeszd be a VBE-be.
@@ -28,11 +29,11 @@ A lapkód nem makró: nem kell futtatni, a lap módosításakor magától lefut.
 3. File → Import File: `fotoblatt-form-logic.bas`, `fotoblatt-setup.bas`, `fotoblatt-parts-import.bas`.
 4. A lapkódot a fenti 1–3. lépés szerint illeszd be.
 5. Debug → Compile VBAProject, majd mentés.
-6. Csak új vagy sérült munkafüzetnél: Alt+F8 → `SetupFotolap`. Ez létrehozza a neveket és a legördülőket, rendbe teszi az Article oszlopait és a típuskódokat. A végén rákérdez a termékadatok beolvasására: Igen → `lbl-product-data.xlsm`.
+6. Csak új vagy sérült munkafüzetnél: Alt+F8 → `SetupFotolap`. Ez létrehozza a neveket és a legördülőket, rendbe teszi az Article oszlopait és a típuskódokat. A végén rákérdez a termékadatok, a cikkszámtörzs és a hibamegnevezések beolvasására: Igen → a fájlok a `data\` mappában vannak.
 
 ## Új termékadatok (pl. megjelenik a V4)
 1. Előbb az `lbl-product-data.xlsm`-et frissítsd (l. `lbl-product-data-install.md`).
-2. Fotoblatt: Alt+F8 → `TermekadatokFrissitese` → válaszd az `lbl-product-data.xlsm`-et. A fájlválasztó legközelebb ugyanitt nyílik (`TermekadatokUtvonal` név).
+2. Fotoblatt: Alt+F8 → `TermekadatokFrissitese` → válaszd a `data\lbl-product-data.xlsm`-et. A fájlválasztó legközelebb ugyanitt nyílik (`TermekadatokUtvonal` név).
    - A tblTermek táblát név szerint keresi, ha nincs, fejléc alapján.
    - A Parts!Article R-sorait teljesen újraírja, az A-sorokhoz nem nyúl.
    - Az „Eltűnt a forrásból” státuszú tétel kimarad, a „Kifutott” jelölést kap, minden más aktív.
