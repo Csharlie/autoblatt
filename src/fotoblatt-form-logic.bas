@@ -1,7 +1,9 @@
 Attribute VB_Name = "modFotolap"
 ' Fejlesztes es karbantartas : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary Kft. - Kecskemet, PW
-' Verzio 9.18 - 2026.10.14.
+' Verzio 9.19 - 2026.10.14.
+'   9.19: verzio-igazitas (e-mail gomb a modBeallitas-ban), ebben a
+'         modulban csak a FOTOBLATT_VERZIO valtozott.
 '   9.18c: Utomunka (NA) is: alapertek (eszlelve gyartas soran, mintadarab,
 '          elozo RK2 darabok = nem) es ures = szurke / kitoltott = feher.
 '          Ezzel mindharom kerdesblokk egyforman viselkedik.
@@ -58,7 +60,7 @@ Public Const SH_DATA  As String = "Data"
 Public Const SH_PARTS As String = "Parts"
 
 '--- Kiadasi verzio (v9.17): EZ az egyetlen hely, ahol szerepel -----------
-Public Const FOTOBLATT_VERZIO As String = "9.18"
+Public Const FOTOBLATT_VERZIO As String = "9.19"
 
 '--- Viselkedes ----------------------------------------------------------
 ' True  = minden szerkesztes az aktualis gepfelhasznalora allitja az A2-t

@@ -1,7 +1,9 @@
 Attribute VB_Name = "modTermekadatok"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.18 - 2026.10.14.
+' Verzio 9.19 - 2026.10.14.
+'   9.19: HibakepCella - a hibakep-cella keresese kulon fuggvenyben (a
+'        legordulo es az e-mail targya is ezt hasznalja), mukodes valtozatlan.
 '   9.18: verzio-igazitas a modFotolap 9.18-hoz, ebben a modulban nincs
 '        kodvaltozas.
 '   9.17: rendrakas, uj funkcio nelkul. Ismeretlen vagy torolt cikkszamnal
@@ -1669,13 +1671,13 @@ Public Function HibakepTablaBiztositasa() As ListObject
 
 End Function
 
-' A Hibafeltaras cimsorban a "Hibakep" kezdetu felirat (most E8:F8) utani
-' egyesitett cellara (most G8:I8) legordulot tesz: HibakepLista, de a
-' listan kivuli ertek is beirhato. True, ha beallitotta.
-Public Function HibakepLegorduloBeallitas(ws As Worksheet) As Boolean
+' v9.19: a hibakep-cella: a Hibafeltaras cimsorban a "Hibakep" kezdetu
+' felirat (most E8:F8) utani egyesitett terulet (most G8:I8). Nothing, ha
+' nem talalhato. A legordulo es az e-mail targya is ezt hasznalja.
+Public Function HibakepCella(ws As Worksheet) As Range
 
     Dim cimSor As Long, c As Long
-    Dim terulet As Range, cel As Range
+    Dim terulet As Range
 
     cimSor = SorKereses(ws, H_CIM, 2, 200)
     If cimSor = 0 Then Exit Function
@@ -1685,24 +1687,34 @@ Public Function HibakepLegorduloBeallitas(ws As Worksheet) As Boolean
         Set terulet = ws.Cells(cimSor, c).MergeArea
         If UCase$(Left$(Ekezetlen(Szoveg(terulet.Cells(1, 1).Value)), 7)) = "HIBAKEP" Then
             c = terulet.Column + terulet.Columns.Count
-            If c > 9 Then Exit Function
-            Set cel = ws.Cells(cimSor, c).MergeArea
-
-            On Error Resume Next
-            cel.Validation.Delete
-            On Error GoTo 0
-            With cel.Validation
-                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-                     Operator:=xlBetween, Formula1:="=" & NEV_HIBAKEPLISTA
-                .IgnoreBlank = True
-                .InCellDropdown = True
-                .ShowError = False              ' listan kivuli ertek is beirhato
-            End With
-            HibakepLegorduloBeallitas = True
+            If c <= 9 Then Set HibakepCella = ws.Cells(cimSor, c).MergeArea
             Exit Function
         End If
         c = terulet.Column + terulet.Columns.Count
     Loop
+
+End Function
+
+' A hibakep-cellara (l. HibakepCella) legordulot tesz: HibakepLista, de a
+' listan kivuli ertek is beirhato. True, ha beallitotta.
+Public Function HibakepLegorduloBeallitas(ws As Worksheet) As Boolean
+
+    Dim cel As Range
+
+    Set cel = HibakepCella(ws)
+    If cel Is Nothing Then Exit Function
+
+    On Error Resume Next
+    cel.Validation.Delete
+    On Error GoTo 0
+    With cel.Validation
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+             Operator:=xlBetween, Formula1:="=" & NEV_HIBAKEPLISTA
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowError = False              ' listan kivuli ertek is beirhato
+    End With
+    HibakepLegorduloBeallitas = True
 
 End Function
 

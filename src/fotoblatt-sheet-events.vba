@@ -1,6 +1,10 @@
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.18 - 2026.10.14.
+' Verzio 9.19 - 2026.10.14.
+'   9.19: E-mail gomb lathatosaga (modBeallitas.EmailGombLathatosag):
+'         valtozaskor (A2), lapra lepeskor es kijeloleskor igazodik, igy egy
+'         lathato gombbal mentett fajlban is az elso kattintasra eltunik
+'         annal, aki nem jogosult.
 '   9.18: verzio-igazitas a modFotolap 9.18-hoz, a lapkod nem valtozott.
 '   9.17: - Az E4/E6 logika egy helyen: AnyagFeliratBeallitas (modTermekadatok),
 '           az AnyagFelirat csak azt hivja (tovabbra is elsokent).
@@ -33,6 +37,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If VanErtek(Target) Then SzerkesztesBelyeg Me, Target
 
     If Not Intersect(Target, Me.Range("A2")) Is Nothing Then FelhasznaloKitoltes Me
+
+    ' v9.19: az e-mail gomb az A2 (es a Windows-felhasznalo) szerint
+    EmailGombLathatosag Me
 
     If Not Intersect(Target, Me.Range("A6")) Is Nothing Then
         AnyagFelirat                     ' elobb, hogy semmi ne akassza meg
@@ -67,7 +74,18 @@ Private Sub Worksheet_Activate()
     On Error Resume Next
     Application.EnableEvents = False
     If A6ListaElavult() Then A6ListaFrissites Me
+    EmailGombLathatosag Me                       ' v9.19
     Application.EnableEvents = True
+
+End Sub
+
+
+' v9.19: az e-mail gomb lathatosaga mar az elso kattintasnal helyreall
+' (pl. ha a fajl lathato gombbal mentodott, es mas nyitja meg).
+' Csak akkor nyul a laphoz, ha valtozas kell, igy a kijeloles gyors marad.
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+
+    EmailGombLathatosag Me
 
 End Sub
 
