@@ -13,8 +13,10 @@ Excel/VBA eszközök a MBMH Kecskemét PW Fotólap (Fotoblatt) kitöltéséhez �
 |---|---|
 | `~\Projects\autoblatt\` | a kód (ez a git-repó); a `KodFrissitese` innen tölt (`src\`) |
 | `OneDrive\Projects\autoblatt\` | a futtatott munkafüzet: csak az `autoblatt.xlsm` |
-| `OneDrive\Projects\autoblatt\data\` | minden, amit az autoblatt beolvas: `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`, `cikkszamok\` |
-| `~\Projects\autoblatt-archive\` | minden archív anyag (régi generációk, elavult munkafüzetek, git-mentések), tartalomjegyzék: `ARCHIV.md` |
+| `OneDrive\Projects\autoblatt\data\` | minden, amit az autoblatt beolvas: `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`, `Fehlerarten_Hibamegnevezések.xls`, `cikkszamok\`, `part-details.xlsm`, `id-sfm-cikkszam-*` listák, `Pres_Termekadatok.xlsx`, `Hianyzo_A_szamok_ellenorzes.xlsx`, `v9_Utómunka formanyomtatványok a Présüzemben.xlsx` |
+| `OneDrive\Autoblatt\<Év>\<Hónap>\` | a fotólapok (pl. `2026\10`); a céges példány a P: meghajtón (PW QS Reklamation, Informationsblätter) |
+| `OneDrive\Autoblatt\Status\` | alkatrészenkénti, folyamatos státuszjelentések |
+| `~\Projects\autoblatt-archive\` | minden archív anyag (régi generációk és bővítmények, elavult munkafüzetek, git-mentések), tartalomjegyzék: `ARCHIV.md` |
 
 Munkafüzet nem kerül a repóba (`.gitignore`).
 

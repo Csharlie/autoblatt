@@ -141,8 +141,11 @@ A munkafüzetek céges belső adatot tartalmaznak: cikkszámok, beszállító (p
 |---|---|---|
 | `C:\Users\pesardy\Projects\autoblatt\` | git-repó: `src/`, `docs/`, HANDOFF, CHANGELOG, `test-data/` | fejlesztés, verziókezelés, push. Innen makró nem fut, nem is kell. Munkafüzet nem kerül ide. |
 | `OneDrive\Projects\autoblatt\` | csak az `autoblatt.xlsm` (a Fotoblatt; a korábbi `fotoblatt.xlsm` archiválva) | futtatás és Excel-munka (céges szabály: makró csak OneDrive-ról fut) |
-| `OneDrive\Projects\autoblatt\data\` | `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`, `cikkszamok\` | minden, amit az autoblatt beolvas. A fájlválasztók itt nyílnak, ha a megjegyzett hely már nem létezik (9.20). |
-| `C:\Users\pesardy\Projects\autoblatt-archive\` | régi generációk, elavult munkafüzetek, git-bundle-ök; tartalomjegyzék: `ARCHIV.md` | csak olvasásra. Helyi mappa, nincs automatikus mentése. |
+| `OneDrive\Projects\autoblatt\data\` | `lbl-product-data.xlsm`, `Autoblatt_Cikkszamtorzs.xlsx`, `hibamegnevezések.xls`, `Fehlerarten_Hibamegnevezések.xls`, `cikkszamok\`, `part-details.xlsm`, `id-sfm-cikkszam-*`, `Pres_Termekadatok.xlsx`, `Hianyzo_A_szamok_ellenorzes.xlsx`, `v9_Utómunka formanyomtatványok a Présüzemben.xlsx` | minden, amit az autoblatt beolvas. A fájlválasztók itt nyílnak, ha a megjegyzett hely már nem létezik (9.20). |
+| `OneDrive\Autoblatt\<Év>\<Hónap>\`, `OneDrive\Autoblatt\Status\` | fotólapok év/hónap szerint (pl. `2026\10`), státuszjelentések alkatrészenként | munkatermékek; a céges példány a P: meghajtón. A régi `OneDrive\Sheets`, `OneDrive\AutoSheets` és `OneDrive\Autoblatt\2026` ide rendezve (2026.10.15.). |
+| `C:\Users\pesardy\Projects\autoblatt-archive\` | régi generációk és bővítmények (AutoSheets, Autoblatt v1.0, Fotoblatt_auto), elavult munkafüzetek, git-bundle-ök; tartalomjegyzék: `ARCHIV.md` | csak olvasásra. Helyi mappa, nincs automatikus mentése. |
+
+A régi bővítmények (AutoSheets, Autoblatt v1.0) 2026.10.15-én nyugdíjazva: az Excel indításkor nem tölt be régi bővítményt, a kódjuk és telepítésük az archívumban van.
 
 ### 5.3 Egyszeri átállás a GitHubon
 
