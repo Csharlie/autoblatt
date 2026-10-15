@@ -1,7 +1,9 @@
 Attribute VB_Name = "modTermekadatok"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.20 - 2026.10.15.
+' Verzio 9.21 - 2026.10.15.
+'   9.21: verzio-igazitas (Mentes Drive-ra gomb a modBeallitas-ban), ebben a
+'        modulban nincs kodvaltozas.
 '   9.20: uj mappaszerkezet: a bemeno fajlok (lbl-product-data.xlsm,
 '        cikkszamtorzs, hibamegnevezesek, cikkszamok) a munkafuzet melletti
 '        data\ mappaban vannak. A harom fajlvalaszto, ha a megjegyzett

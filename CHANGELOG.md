@@ -4,6 +4,7 @@
 
 | Verzió | Dátum | Változás |
 |---|---|---|
+| 9.21 | 2026.10.15. | „Mentés Drive-ra” gomb (fejlesztés alatt, csak a fejlesztőnek látható): Mentés másként ide: `OneDrive\Autoblatt\<Év>\<Hónap>\<esetmappa>\<dátum> <típus> <megnevezés> <préselés> <hibakép> (<id>-foto).xlsm`, ékezet nélkül; az id a Data!User táblából, kisbetűvel; ütközéskor v2, v3… Az e-mail tárgya: Cikkszám \| Típus \| Megnevezés \| Préselés \| Hibakép \| Gyártó berendezés \| Fotoblatt (ékezetekkel). A fejlesztői gombok láthatósága egy helyen; az e-mail-másolatból mindkét gomb kimarad. |
 | 9.20 | 2026.10.15. | Új mappaszerkezet: a bemenő fájlok a munkafüzet melletti `data\` mappában. A három fájlválasztó (LBL, cikkszámtörzs, hibaképek) a `data\` mappában nyílik, ha a megjegyzett hely már nem létezik (OneDrive-on az URL-útvonalat a helyi mappára képezi le). Az élő munkafüzet az `autoblatt.xlsm`. |
 | 9.19 | 2026.10.15. | E-mail gomb a Fotoblatt lapon (fejlesztés alatt, csak a fejlesztőnek látható): új Outlook-levél, tárgy: Cikkszám \| Megnevezés \| Típus \| Préselés \| Hibakép \| Gyártó berendezés, csatolmány: a munkafüzet másolata. `HibakepCella`. |
 | 9.18 | 2026.10.14. | Hibafeltárás válaszok: alapérték és üres = szürke kitöltés mindhárom kérdésblokkban (ServoTPS, LBL, Utómunka); kulcsszavas igen/nem minták, új igen/nem legördülők. |

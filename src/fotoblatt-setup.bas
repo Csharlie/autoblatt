@@ -1,7 +1,16 @@
 Attribute VB_Name = "modBeallitas"
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.20 - 2026.10.15.
+' Verzio 9.21 - 2026.10.15.
+'   9.21: "Mentes Drive-ra" gomb (K3, fejlesztes alatt, mint az e-mail gomb):
+'         Mentes maskent ide: OneDrive\Autoblatt\<Ev>\<Honap>\<esetmappa>\
+'         <datum> <tipus> <megnevezes> <preseles> <hibakep> (<id>-foto).xlsm,
+'         ekezet nelkul; az id a Data!User tablabol (A2), kisbetuvel.
+'         Utkozeskor v2, v3... Az e-mail targya: Cikkszam | Tipus | Megnevezes |
+'         Preseles | Hibakep | Gyarto berendezes | Fotoblatt (ekezetekkel, ahogy a cellakban).
+'         A level szovege: "Sziasztok! / Mellekelten kuldok egy fotolapot!"
+'         Mentes utan nincs kulon Intezo-ablak (MENTES_MAPPA_NYITAS = True: van).
+'         A fejlesztoi gombok lathatosaga egy helyen (GombIgazitas).
 '   9.20: verzio-igazitas (uj mappaszerkezet, l. modTermekadatok), kodvaltozas nincs.
 '   9.19: E-mail gomb a Fotoblatt lapon (K1, a nyomtatasi teruleten kivul):
 '         uj Outlook-level, targy: Cikkszam | Megnevezes | Tipus | Preseles |
@@ -31,6 +40,15 @@ Private Const EMAIL_MINDENKINEK As Boolean = False
 Private Const EMAIL_FEJLESZTO   As String = "PESARDY"
 Private Const BTN_EMAIL         As String = "btnEmail"
 Private Const EMAIL_CIMZETT     As String = ""        ' ures = kezzel adod meg
+
+'--- Mentes Drive-ra gomb (v9.21) ---------------------------------------------
+' Fejlesztes alatt ugyanugy csak a fejleszto latja (EMAIL_FEJLESZTO), az
+' e-mail gombtol fuggetlenul adhato ki: MENTES_MINDENKINEK = True.
+Private Const MENTES_MINDENKINEK As Boolean = False
+Private Const BTN_MENTES         As String = "btnMentesDrive"
+Private Const MENTES_GYOKER      As String = "Autoblatt"   ' a OneDrive mappa alatt
+Private Const MENTES_ESETMAPPA   As Boolean = True         ' True = minden fotolap sajat mappaba
+Private Const MENTES_MAPPA_NYITAS As Boolean = False        ' True = mentes utan Intezo-ablak a mappaval
 
 '==========================================================================
 ' Fotolap - egyszer futtatando beallitas
@@ -350,8 +368,8 @@ End Sub
 '--------------------------------------------------------------------------
 ' Urlapgomb a Fotoblatt lapon (K1, a nyomtatasi teruleten kivul, nem
 ' nyomtatodik). Kattintasra a munkafuzet masolata (eredeti neven, a TEMP
-' mappaban) egy uj Outlook-levelhez csatolodik, targy: Cikkszam |
-' Megnevezes | Tipus | Preseles | Hibakep | Gyarto berendezes. A level csak
+' mappaban) egy uj Outlook-levelhez csatolodik, targy (v9.21): Cikkszam |
+' Tipus | Megnevezes | Preseles | Hibakep | Gyarto berendezes | Fotoblatt. A level csak
 ' megjelenik, NEM megy el magatol. Klasszikus Outlook kell (COM).
 '
 ' Fejlesztes alatt (EMAIL_MINDENKINEK = False) a gomb csak akkor LATHATO es
@@ -363,56 +381,97 @@ End Sub
 ' True, ha az aktualis felhasznalo latja/hasznalhatja az e-mail gombot.
 ' Hibat nem dob (hiba eseten False = rejtve).
 Public Function EmailJogosult(ws As Worksheet) As Boolean
+    EmailJogosult = FejlesztoiJogosult(ws, EMAIL_MINDENKINEK)
+End Function
+
+' v9.21: ugyanez a "Mentes Drive-ra" gombra
+Public Function MentesJogosult(ws As Worksheet) As Boolean
+    MentesJogosult = FejlesztoiJogosult(ws, MENTES_MINDENKINEK)
+End Function
+
+' v9.21: kozos jogosultsag-ellenorzes a fejlesztes alatti gombokhoz: kiadva
+' mindenkinek, kulonben csak ha az A2 ES a Windows-felhasznalo is a fejleszto.
+Private Function FejlesztoiJogosult(ws As Worksheet, ByVal mindenkinek As Boolean) As Boolean
     On Error GoTo Vege
-    If EMAIL_MINDENKINEK Then
-        EmailJogosult = True
+    If mindenkinek Then
+        FejlesztoiJogosult = True
     Else
-        EmailJogosult = _
+        FejlesztoiJogosult = _
             (StrComp(Trim$(CStr(ws.Range("A2").Value)), EMAIL_FEJLESZTO, vbTextCompare) = 0) And _
             (StrComp(Trim$(Environ$("USERNAME")), EMAIL_FEJLESZTO, vbTextCompare) = 0)
     End If
 Vege:
 End Function
 
-' A gomb lathatosaganak igazitasa (a lapkod hivja). Jogosultnal, ha meg
-' nincs gomb, letrehozza. Csak akkor ir, ha valtozas kell. Hibat nem dob.
+' A fejlesztoi gombok lathatosaganak igazitasa (a lapkod hivja; a nev a
+' korabbi, v9.21 ota mindket gombot kezeli). Hibat nem dob.
 Public Sub EmailGombLathatosag(ws As Worksheet)
+    On Error Resume Next
+    GombIgazitas ws, BTN_EMAIL, EmailJogosult(ws), _
+        ChrW(9993) & "  E-mail k" & ChrW(252) & "ld" & ChrW(233) & "se...", "FotolapEmail", 1
+    GombIgazitas ws, BTN_MENTES, MentesJogosult(ws), _
+        ChrW(9729) & "  Ment" & ChrW(233) & "s Drive-ra...", "FotolapMentesDrive", 3
+End Sub
 
-    Dim gomb As Shape, kell As Boolean
+' v9.21: egy gomb lathatosaga; jogosultnal, ha meg nincs, letrehozza (urlapgomb
+' a K oszlopban, az A:I oldalon kivul, nem nyomtatodik). Csak akkor ir, ha
+' valtozas kell. Hibat nem dob.
+Private Sub GombIgazitas(ws As Worksheet, ByVal nev As String, ByVal kell As Boolean, _
+                         ByVal felirat As String, ByVal makro As String, ByVal sor As Long)
+
+    Dim gomb As Shape, hely As Range, b As Object
 
     On Error Resume Next
-    kell = EmailJogosult(ws)
-    Set gomb = ws.Shapes(BTN_EMAIL)
-    If gomb Is Nothing And kell Then Set gomb = EmailGombLetrehozasa(ws)
+    Set gomb = ws.Shapes(nev)
+    If gomb Is Nothing And kell Then
+        Set hely = ws.Cells(sor, 11)
+        Set b = ws.Buttons.Add(hely.Left + 6, hely.Top + 3, 170, 24)
+        b.Name = nev
+        b.Caption = felirat
+        b.OnAction = makro
+        b.Placement = xlFreeFloating
+        b.PrintObject = False
+        Set gomb = ws.Shapes(nev)
+    End If
     If Not gomb Is Nothing Then
         If CBool(gomb.Visible) <> kell Then gomb.Visible = kell
     End If
 
 End Sub
 
-' Urlapgomb, mint a termekadat-fajl "Frissites forrasbol..." gombja.
-Private Function EmailGombLetrehozasa(ws As Worksheet) As Shape
-
-    Dim hely As Range, b As Object
-
-    Set hely = ws.Cells(1, 11)                       ' K1: az A:I oldalon kivul
-    Set b = ws.Buttons.Add(hely.Left + 6, hely.Top + 3, 170, 24)
-    b.Name = BTN_EMAIL
-    b.Caption = ChrW(9993) & "  E-mail k" & ChrW(252) & "ld" & ChrW(233) & "se..."
-    b.OnAction = "FotolapEmail"
-    b.Placement = xlFreeFloating
-    b.PrintObject = False
-    Set EmailGombLetrehozasa = ws.Shapes(BTN_EMAIL)
-
+' v9.21: a fejlesztoi gombok elrejtese (pl. mentes vagy masolat elott), es
+' az elozo allapot visszaadasa (vesszovel elvalasztott "nev=0/1" lista).
+Private Function GombokElrejtese(ws As Worksheet) As String
+    Dim nev As Variant, gomb As Shape, ki As String
+    For Each nev In Array(BTN_EMAIL, BTN_MENTES)
+        Set gomb = Nothing
+        On Error Resume Next
+        Set gomb = ws.Shapes(CStr(nev))
+        On Error GoTo 0
+        If Not gomb Is Nothing Then
+            ki = ki & nev & "=" & IIf(CBool(gomb.Visible), "1", "0") & ","
+            gomb.Visible = False
+        End If
+    Next nev
+    GombokElrejtese = ki
 End Function
+
+Private Sub GombokVisszaallitasa(ws As Worksheet, ByVal allapot As String)
+    Dim t As Variant, p As Long
+    On Error Resume Next
+    For Each t In Split(allapot, ",")
+        p = InStr(t, "=")
+        If p > 0 Then ws.Shapes(Left$(t, p - 1)).Visible = (Mid$(t, p + 1) = "1")
+    Next t
+End Sub
 
 ' Az e-mail gomb makroja. Az opcionalis parameter miatt NEM jelenik meg az
 ' Alt+F8 makrolistaban; a gomb (OnAction) igy is meghivja.
 Public Sub FotolapEmail(Optional ByVal rejtett As Variant)
 
-    Dim ws As Worksheet, ol As Object, level As Object, gomb As Shape
+    Dim ws As Worksheet, ol As Object, level As Object
     Dim targy As String, masolat As String, html As String, torzs As String
-    Dim p As Long, lepes As String, gombLathato As Boolean
+    Dim p As Long, lepes As String, gombAllapot As String
 
     On Error GoTo Hiba
     Set ws = ThisWorkbook.Worksheets(SH_FOTO)
@@ -430,20 +489,15 @@ Public Sub FotolapEmail(Optional ByVal rejtett As Variant)
     '--- A munkafuzet masolata a TEMP mappaba, eredeti neven es formatumban.
     '    (A OneDrive-os munkafuzet utvonala URL lehet, kozvetlenul nem
     '    csatolhato; a masolat a nem mentett modositasokat is tartalmazza.)
-    '    A masolat elott az e-mail gombot elrejtjuk, hogy a cimzettnel ne
-    '    latszodjon, utana visszaallitjuk.
+    '    A masolat elott a fejlesztoi gombokat elrejtjuk, hogy a cimzettnel ne
+    '    latszodjanak, utana visszaallitjuk.
     lepes = "munkafuzet masolasa"
     masolat = Environ$("TEMP") & "\" & ThisWorkbook.Name
     If Len(Dir$(masolat)) > 0 Then Kill masolat
-    On Error Resume Next
-    Set gomb = ws.Shapes(BTN_EMAIL)
-    On Error GoTo Hiba
-    If Not gomb Is Nothing Then
-        gombLathato = CBool(gomb.Visible)
-        gomb.Visible = False
-    End If
+    gombAllapot = GombokElrejtese(ws)
     ThisWorkbook.SaveCopyAs masolat
-    If Not gomb Is Nothing Then gomb.Visible = gombLathato
+    GombokVisszaallitasa ws, gombAllapot
+    gombAllapot = ""
 
     '--- Outlook-level -----------------------------------------------------
     lepes = "Outlook inditasa"
@@ -457,8 +511,9 @@ Public Sub FotolapEmail(Optional ByVal rejtett As Variant)
     level.Display                                    ' itt kerul bele az alairas
 
     ' Rovid szoveg az alairas ele (a <body> nyito tag utan)
-    torzs = "<p>" & HtmlSzoveg("Mell" & ChrW(233) & "kelten k" & ChrW(252) & "ld" & ChrW(246) & _
-            "m a fot" & ChrW(243) & "lapot.") & "</p>"
+    ' v9.21: koszontes + uj mondat
+    torzs = "<p>Sziasztok!</p><p>" & HtmlSzoveg("Mell" & ChrW(233) & "kelten k" & ChrW(252) & _
+            "ld" & ChrW(246) & "k egy fot" & ChrW(243) & "lapot!") & "</p>"
     html = level.HTMLBody
     p = InStr(1, html, "<body", vbTextCompare)
     If p > 0 Then p = InStr(p, html, ">")
@@ -472,15 +527,173 @@ Public Sub FotolapEmail(Optional ByVal rejtett As Variant)
 Hiba:
     Dim hSzam As Long, hSzoveg As String
     hSzam = Err.Number: hSzoveg = Err.Description
-    ' a gomb ne maradjon rejtve, ha a masolas kozben tortent a hiba
+    ' a gombok ne maradjanak rejtve, ha a masolas kozben tortent a hiba
     On Error Resume Next
-    If Not gomb Is Nothing Then gomb.Visible = gombLathato
+    If Len(gombAllapot) > 0 Then GombokVisszaallitasa ws, gombAllapot
     MsgBox "Az e-mail nem k" & ChrW(233) & "sz" & ChrW(252) & "lt el [" & lepes & "]:" & vbLf & _
            hSzoveg & " (" & hSzam & ")", vbExclamation, "E-mail"
 End Sub
 
-' Targy: Cikkszam | Megnevezes | Tipus | Preseles | Hibakep | Gyarto berendezes
-' (A6 | C6 | G6 | E6 | hibakep-cella | H6). Az ures mezo kimarad, igy nem
+'==========================================================================
+' v9.21: Mentes Drive-ra (fejlesztes alatt)
+'--------------------------------------------------------------------------
+' Mentes maskent (a megnyitott munkafuzet maga lesz a mentett fotolap, az
+' autoblatt.xlsm sablon a lemezen erintetlen marad):
+'   OneDrive\Autoblatt\<Ev>\<Honap>\[<esetmappa>\]
+'     <datum> <tipus> <megnevezes> <preseles> <hibakep> (<id>-foto).xlsm
+' A datum az I3-bol (ures: mai nap), ebbol az ev es a honap is. Minden resz
+' ekezet nelkul; az ures mezo kimarad. Az ID a Data!User tablabol (az A2-ben
+' kivalasztott felhasznalo sora). Ha a fajl mar letezik: v2, v3... (kerdesre).
+'==========================================================================
+Public Sub FotolapMentesDrive(Optional ByVal rejtett As Variant)
+
+    Dim ws As Worksheet, datum As Date, id As String, alap As String
+    Dim od As String, mappa As String, ut As String, v As Long
+    Dim lepes As String, gombAllapot As String, valasz As VbMsgBoxResult, CIM As String
+
+    On Error GoTo Hiba
+    CIM = "Ment" & ChrW(233) & "s Drive-ra"
+    Set ws = ThisWorkbook.Worksheets(SH_FOTO)
+
+    lepes = "jogosultsag"
+    If Not MentesJogosult(ws) Then
+        MsgBox "Ez a funkci" & ChrW(243) & " m" & ChrW(233) & "g fejleszt" & ChrW(233) & _
+               "s alatt " & ChrW(225) & "ll.", vbInformation, CIM
+        EmailGombLathatosag ws
+        Exit Sub
+    End If
+
+    '--- Nev es hely ------------------------------------------------------
+    lepes = "fajlnev"
+    If IsDate(ws.Range("I3").Value) Then datum = CDate(ws.Range("I3").Value) Else datum = Date
+    id = LCase$(FelhasznaloId(ws))               ' a fajlnevben kisbetuvel
+    alap = MentesNevAlap(ws, datum)
+    If Len(alap) <= 8 Then
+        MsgBox "A f" & ChrW(225) & "jln" & ChrW(233) & "vhez nincs el" & ChrW(233) & "g adat: " & _
+               "t" & ChrW(246) & "ltsd ki legal" & ChrW(225) & "bb a cikksz" & ChrW(225) & "mot " & _
+               "(t" & ChrW(237) & "pus, megnevez" & ChrW(233) & "s) " & ChrW(233) & "s a hibak" & _
+               ChrW(233) & "pet.", vbExclamation, CIM
+        Exit Sub
+    End If
+
+    lepes = "OneDrive mappa"
+    od = Environ$("OneDriveCommercial")
+    If Len(od) = 0 Then od = Environ$("OneDrive")
+    If Len(od) = 0 Then Err.Raise vbObjectError + 570, , "A OneDrive mappa nem talalhato (OneDriveCommercial)."
+    mappa = od & "\" & MENTES_GYOKER & "\" & Format$(datum, "yyyy") & "\" & Format$(datum, "mm")
+    If MENTES_ESETMAPPA Then mappa = mappa & "\" & alap
+    ut = mappa & "\" & alap & " (" & id & "-foto).xlsm"
+
+    If Len(Dir$(ut)) > 0 Then
+        valasz = MsgBox("A f" & ChrW(225) & "jl m" & ChrW(225) & "r l" & ChrW(233) & "tezik:" & vbLf & vbLf & ut & _
+                        vbLf & vbLf & "Mentsem " & ChrW(250) & "j verzi" & ChrW(243) & "k" & ChrW(233) & "nt " & _
+                        "(v2, v3 ...)?", vbQuestion + vbYesNo, CIM)
+        If valasz <> vbYes Then Exit Sub
+        v = 1
+        Do
+            v = v + 1
+            ut = mappa & "\" & alap & " (" & id & "-foto) v" & v & ".xlsm"
+        Loop While Len(Dir$(ut)) > 0
+    End If
+
+    valasz = MsgBox("Ment" & ChrW(233) & "s ide:" & vbLf & vbLf & ut & vbLf & vbLf & _
+                    "A megnyitott munkaf" & ChrW(252) & "zet ezut" & ChrW(225) & "n ez a f" & ChrW(225) & _
+                    "jl lesz (az autoblatt.xlsm sablon nem v" & ChrW(225) & "ltozik).", _
+                    vbQuestion + vbOKCancel, CIM)
+    If valasz <> vbOK Then Exit Sub
+
+    '--- Mentes -----------------------------------------------------------
+    lepes = "mappa letrehozasa"
+    MappaLetrehozas mappa
+
+    lepes = "mentes"
+    gombAllapot = GombokElrejtese(ws)          ' a mentett fajlban ne latszodjanak
+    Application.DisplayAlerts = False
+    ThisWorkbook.SaveAs Filename:=ut, FileFormat:=52      ' xlOpenXMLWorkbookMacroEnabled
+    Application.DisplayAlerts = True
+    GombokVisszaallitasa ws, gombAllapot
+    gombAllapot = ""
+    ThisWorkbook.Saved = True                  ' a gombok visszaallitasa nem modositas
+
+    If MENTES_MAPPA_NYITAS Then Shell "explorer.exe """ & mappa & """", vbNormalFocus
+    MsgBox "Mentve:" & vbLf & ut, vbInformation, CIM
+    Exit Sub
+
+Hiba:
+    Dim hSzam As Long, hSzoveg As String
+    hSzam = Err.Number: hSzoveg = Err.Description
+    On Error Resume Next
+    Application.DisplayAlerts = True
+    If Len(gombAllapot) > 0 Then GombokVisszaallitasa ws, gombAllapot
+    MsgBox "A ment" & ChrW(233) & "s nem siker" & ChrW(252) & "lt [" & lepes & "]:" & vbLf & _
+           hSzoveg & " (" & hSzam & ")", vbExclamation, CIM
+End Sub
+
+' v9.21: "<datum> <tipus> <megnevezes> <preseles> <hibakep>" ekezet nelkul,
+' az ures mezok nelkul (G6, C6, E6, hibakep-cella).
+Private Function MentesNevAlap(ws As Worksheet, ByVal datum As Date) As String
+    Dim reszek As Variant, resz As Variant, s As String, hibakep As String, cel As Range
+    Set cel = HibakepCella(ws)
+    If Not cel Is Nothing Then hibakep = CellaSzoveg(ws, cel.Cells(1, 1).Address)
+    reszek = Array(CellaSzoveg(ws, "G6"), CellaSzoveg(ws, "C6"), CellaSzoveg(ws, "E6"), hibakep)
+    s = Format$(datum, "yyyymmdd")
+    For Each resz In reszek
+        resz = FajlnevResz(CStr(resz))
+        If Len(resz) > 0 Then s = s & " " & resz
+    Next resz
+    MentesNevAlap = s
+End Function
+
+' v9.21: a kitolto azonositoja a Data!User tablabol (az A2-ben kivalasztott
+' felhasznalo sora); tartalek: az A2 erteke, vegul a Windows-felhasznalo.
+Private Function FelhasznaloId(ws As Worksheet) As String
+    Dim a2 As String, lo As ListObject, c As Range
+    a2 = CellaSzoveg(ws, "A2")
+    On Error Resume Next
+    Set lo = ThisWorkbook.Worksheets(SH_DATA).ListObjects("User")
+    If Not lo Is Nothing And Len(a2) > 0 Then
+        For Each c In lo.ListColumns("ID").DataBodyRange.Cells
+            If StrComp(Trim$(CStr(c.Value)), a2, vbTextCompare) = 0 Then a2 = Trim$(CStr(c.Value)): Exit For
+        Next c
+    End If
+    On Error GoTo 0
+    If Len(a2) = 0 Then a2 = UCase$(Environ$("USERNAME"))
+    FelhasznaloId = FajlnevResz(a2)
+End Function
+
+' v9.21: fajlnevbe valo resz: ekezet nelkul (Ekezetlen + ss), csak kiirhato
+' ASCII, a tiltott karakterek helyett kotojel, egyszeres szokozok.
+Private Function FajlnevResz(ByVal s As String) As String
+    Dim i As Long, ch As String, k As Long, ki As String
+    s = Replace(Replace(Replace(s, vbCr, " "), vbLf, " "), vbTab, " ")
+    s = Ekezetlen(s)
+    s = Replace(s, ChrW(223), "ss")
+    For i = 1 To Len(s)
+        ch = Mid$(s, i, 1): k = AscW(ch)
+        If InStr(1, "\/:*?""<>|", ch) > 0 Then
+            ki = ki & "-"
+        ElseIf k >= 32 And k <= 126 Then
+            ki = ki & ch
+        End If
+    Next i
+    Do While InStr(ki, "  ") > 0: ki = Replace(ki, "  ", " "): Loop
+    FajlnevResz = Trim$(ki)
+End Function
+
+' v9.21: mappa letrehozasa a teljes utvonalon (a hianyzo szinteket is)
+Private Sub MappaLetrehozas(ByVal ut As String)
+    Dim reszek As Variant, i As Long, aktualis As String
+    reszek = Split(ut, "\")
+    aktualis = reszek(0)
+    For i = 1 To UBound(reszek)
+        aktualis = aktualis & "\" & reszek(i)
+        If Len(Dir$(aktualis, vbDirectory)) = 0 Then MkDir aktualis
+    Next i
+End Sub
+
+' Targy (v9.21): Cikkszam | Tipus | Megnevezes | Preseles | Hibakep | Gyarto berendezes | Fotoblatt
+' (A6 | G6 | C6 | E6 | hibakep-cella | H6 | "Fotoblatt"), ekezetekkel, ahogy a
+' cellakban allnak. Az ures mezo kimarad, igy nem
 ' lesz a targyban "| |".
 Private Function EmailTargy(ws As Worksheet) As String
 
@@ -490,8 +703,8 @@ Private Function EmailTargy(ws As Worksheet) As String
     Set cel = HibakepCella(ws)
     If Not cel Is Nothing Then hibakep = CellaSzoveg(ws, cel.Cells(1, 1).Address)
 
-    reszek = Array(CellaSzoveg(ws, "A6"), CellaSzoveg(ws, "C6"), CellaSzoveg(ws, "G6"), _
-                   CellaSzoveg(ws, "E6"), hibakep, CellaSzoveg(ws, "H6"))
+    reszek = Array(CellaSzoveg(ws, "A6"), CellaSzoveg(ws, "G6"), CellaSzoveg(ws, "C6"), _
+                   CellaSzoveg(ws, "E6"), hibakep, CellaSzoveg(ws, "H6"), "Fotoblatt")
     For Each resz In reszek
         If Len(resz) > 0 Then s = s & IIf(Len(s) > 0, " | ", "") & resz
     Next resz

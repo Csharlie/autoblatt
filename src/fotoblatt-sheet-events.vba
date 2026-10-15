@@ -1,6 +1,8 @@
 ' Keszitette es karbantartja : Sardy Peter (PESARDY)
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
-' Verzio 9.20 - 2026.10.15.
+' Verzio 9.21 - 2026.10.15.
+'   9.21: verzio-igazitas; az EmailGombLathatosag mostantol a "Mentes Drive-ra"
+'         gombot is kezeli (modBeallitas), a lapkod nem valtozott.
 '   9.20: verzio-igazitas (uj mappaszerkezet), a lapkod nem valtozott.
 '   9.19: E-mail gomb lathatosaga (modBeallitas.EmailGombLathatosag):
 '         valtozaskor (A2), lapra lepeskor es kijeloleskor igazodik, igy egy
