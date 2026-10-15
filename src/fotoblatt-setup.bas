@@ -3,7 +3,7 @@ Attribute VB_Name = "modBeallitas"
 ' Mercedes-Benz Manufacturing Hungary, Kecskemet - PW
 ' Verzio 9.21 - 2026.10.15.
 '   9.21: "Mentes Drive-ra" gomb (K3, fejlesztes alatt, mint az e-mail gomb):
-'         Mentes maskent ide: OneDrive\Autoblatt\<Ev>\<Honap>\<esetmappa>\
+'         Mentes maskent kozvetlenul a honap mappajaba: OneDrive\Autoblatt\<Ev>\<Honap>\
 '         <datum> <tipus> <megnevezes> <preseles> <hibakep> (<id>-foto).xlsm,
 '         ekezet nelkul; az id a Data!User tablabol (A2), kisbetuvel.
 '         Utkozeskor v2, v3... Az e-mail targya: Cikkszam | Tipus | Megnevezes |
@@ -47,7 +47,7 @@ Private Const EMAIL_CIMZETT     As String = ""        ' ures = kezzel adod meg
 Private Const MENTES_MINDENKINEK As Boolean = False
 Private Const BTN_MENTES         As String = "btnMentesDrive"
 Private Const MENTES_GYOKER      As String = "Autoblatt"   ' a OneDrive mappa alatt
-Private Const MENTES_ESETMAPPA   As Boolean = True         ' True = minden fotolap sajat mappaba
+Private Const MENTES_ESETMAPPA   As Boolean = False        ' True = minden fotolap sajat (fajlnev szerinti) mappaba
 Private Const MENTES_MAPPA_NYITAS As Boolean = False        ' True = mentes utan Intezo-ablak a mappaval
 
 '==========================================================================
